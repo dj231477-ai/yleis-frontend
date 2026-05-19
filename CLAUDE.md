@@ -11,8 +11,16 @@ Cuatro servicios principales:
 - **Traduce o Interpreta** — profesionales ofrecen servicios lingüísticos
 - **Solicita un traductor o intérprete** — clientes contratan servicios
 
-El backend lo desarrolla otro equipo en **Django REST Framework**.
-Este repositorio es únicamente el **frontend**.
+**Decisión arquitectónica:** no se usa Django REST Framework.
+El backend es **Supabase + Next.js API Routes** — serverless, sin servidor propio.
+
+**Stack backend definitivo:**
+- **Supabase** — PostgreSQL, Auth, Storage, Realtime
+- **Next.js API Routes** — lógica de negocio, webhooks, tokens de Agora
+- **Mercado Pago** — pasarela de pagos (Colombia: PSE, Nequi, Daviplata, tarjetas)
+- **Agora.io** — video en vivo y grabaciones
+- **Resend** — correos transaccionales
+- **Vercel** — despliegue serverless
 
 ---
 
@@ -277,62 +285,66 @@ por qué se eligieron y cómo se conectan al frontend.
 
 ---
 
-### 1. Pasarela de pagos — Stripe
+### 1. Pasarela de pagos — Mercado Pago
 
-**Por qué Stripe sobre Wompi/Mercado Pago:**
-- Documentación superior y SDKs de React oficiales (`@stripe/react-stripe-js`)
-- **Stripe Connect** es el estándar de la industria para marketplaces (Uber, Airbnb, Fiverr)
-- Soporte nativo para Split Payments, Pre-autorizaciones y Tokenización
-- Dashboard de administración muy completo para ver transacciones, disputas y reembolsos
+**⚠️ Por qué NO Stripe para Colombia:**
+Stripe no permite registrar empresas ubicadas legalmente en Colombia.
+Si Yleis opera como SAS colombiana o persona natural con RUT colombiano,
+no podrás recibir los fondos. Stripe Atlas (LLC en EE.UU.) es una opción
+solo si el mercado principal es internacional.
 
-**⚠️ Advertencia importante para Colombia:**
-Stripe opera en Colombia pero **no soporta PSE** (débito bancario), que es
-el método de pago más usado por los colombianos. Para el MVP con tarjetas
-de crédito/débito Stripe es perfecto. Si necesitas PSE en el futuro,
-se puede agregar Wompi solo para ese método específico.
+**Por qué Mercado Pago:**
+- Soporta **PSE** (el método de pago más usado en Colombia)
+- Soporta **Nequi**, **Daviplata**, tarjetas crédito/débito y efectivo
+- API robusta con soporte para Split Payments y Pre-autorizaciones
+- Presencia legal y fiscal en Colombia
 
-**Flujo tipo Uber con Stripe Connect:**
-1. Profesional se registra → crea cuenta Stripe Connect (Express Account)
-2. Cliente ingresa tarjeta → **Stripe Elements** tokeniza (nunca pasa por nuestro servidor)
-3. Al iniciar sesión → **Pre-autorización** (`payment_intent` con `capture_method: manual`)
-4. Al finalizar → **Captura** del monto final
-5. Stripe divide automáticamente → comisión a Yleis + pago al profesional
-
-**Paquetes necesarios:**
-```bash
-npm install @stripe/stripe-js @stripe/react-stripe-js
-```
+**Flujo tipo Uber con Mercado Pago:**
+1. Cliente ingresa datos → Mercado Pago tokeniza la tarjeta (nunca en nuestra DB)
+2. Al iniciar sesión → **Pre-autorización** (reserva el saldo sin cobrar)
+3. Al finalizar → **Captura** del monto real
+4. Next.js API Route ejecuta la **dispersión** → % al profesional + % a Yleis
 
 **Integración en el frontend:**
 ```typescript
 // src/components/payments/CheckoutForm.tsx  (a construir)
-// "use client" — Stripe Elements necesita el navegador
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+// "use client" — el SDK de Mercado Pago necesita el navegador
+import { initMercadoPago, CardPayment } from "@mercadopago/sdk-react";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-// El frontend NUNCA maneja datos de tarjeta en crudo — Stripe los tokeniza
+initMercadoPago(process.env.NEXT_PUBLIC_MP_PUBLIC_KEY!);
+// El componente <CardPayment /> renderiza el formulario seguro (PCI-DSS)
+// El frontend solo recibe el token — nunca datos de tarjeta en crudo
 ```
 
 ```typescript
-// src/services/payment.service.ts
-async createPaymentIntent(amount: number, sessionId: string): Promise<{ clientSecret: string }> {
-  // Django crea el PaymentIntent y devuelve el clientSecret
-  // El frontend usa el clientSecret para confirmar con Stripe directamente
-  return apiClient.post("/v1/payments/create-intent/", { amount, sessionId });
+// src/app/api/payments/create-preference/route.ts  (Next.js API Route)
+// Esta lógica corre en el SERVIDOR — la clave secreta nunca llega al frontend
+import { MercadoPagoConfig, Preference } from "mercadopago";
+
+const client = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! });
+
+export async function POST(req: Request) {
+  const { amount, sessionId, professionalId } = await req.json();
+  const preference = new Preference(client);
+  const result = await preference.create({
+    body: {
+      items: [{ title: "Sesión Yleis", unit_price: amount, quantity: 1 }],
+      // Split: % para Yleis, % para el profesional
+    },
+  });
+  return Response.json({ preferenceId: result.id });
 }
 ```
 
 **Variables de entorno:**
 ```bash
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxx   # pública, segura en frontend
-# STRIPE_SECRET_KEY va SOLO en Django — nunca en el frontend
+NEXT_PUBLIC_MP_PUBLIC_KEY=APP_USR-xxxx   # pública, segura en frontend
+MP_ACCESS_TOKEN=APP_USR-xxxx             # SOLO en servidor (API Routes), nunca en frontend
 ```
 
 **Documentación:**
-- Stripe React: `https://stripe.com/docs/stripe-js/react`
-- Stripe Connect (marketplaces): `https://stripe.com/docs/connect`
-- Stripe en Colombia: `https://stripe.com/global`
+- Mercado Pago Colombia: `https://www.mercadopago.com.co/developers`
+- SDK React: `https://github.com/mercadopago/sdk-react`
 
 ---
 
@@ -531,6 +543,202 @@ es el único punto de contacto con WebSockets. El resto de la app es HTTP normal
 
 ---
 
+### 7. Seguridad de datos — Row Level Security (RLS)
+
+**El riesgo sin RLS:**
+Supabase genera la API automáticamente desde las tablas PostgreSQL.
+Sin configuración, cualquier usuario autenticado podría hacer:
+```sql
+SELECT * FROM bookings;  -- vería las reservas de TODOS los usuarios
+```
+
+**La solución — RLS en cada tabla:**
+RLS es una capa de seguridad a nivel de base de datos. No importa qué
+haga el frontend o la API — PostgreSQL rechaza la query si no cumple la política.
+
+```sql
+-- Política: un estudiante solo ve SUS reservas
+CREATE POLICY "students_own_bookings" ON bookings
+  FOR SELECT USING (auth.uid() = student_id);
+
+-- Política: un profesional ve las reservas donde él es el proveedor
+CREATE POLICY "providers_own_bookings" ON bookings
+  FOR SELECT USING (auth.uid() = provider_id);
+
+-- Política: un admin ve todo
+CREATE POLICY "admin_all_bookings" ON bookings
+  FOR ALL USING (
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
+  );
+```
+
+**Regla:** toda tabla nueva en Supabase debe tener RLS habilitado
+y políticas definidas antes de conectarla al frontend.
+
+---
+
+### 8. Esquema de base de datos — Supabase
+
+Estructura escalable. Diseñada para soportar cualquier tipo de
+profesional en el futuro sin romper el esquema existente.
+
+```sql
+-- Extiende la tabla auth.users de Supabase
+-- Un registro por usuario, sin importar su rol
+profiles
+  id            uuid  (FK → auth.users.id)
+  role          enum  ('student', 'teacher', 'translator', 'interpreter', 'admin')
+  first_name    text
+  last_name     text
+  avatar_url    text
+  city          text
+  country       text
+  timezone      text
+  bio           text
+  languages     jsonb  -- [{ code, name, flag, level }]
+  created_at    timestamptz
+
+-- Catálogo de categorías de servicio (escalable a futuro)
+-- Ej: "Inglés B2", "Traducción Legal", "Interpretación Simultánea"
+service_categories
+  id            uuid
+  name          text
+  type          enum  ('language_class', 'translation', 'interpretation')
+  description   text
+
+-- Oferta de cada profesional: qué ofrece, a qué precio y en qué modalidad
+provider_offerings
+  id              uuid
+  provider_id     uuid  (FK → profiles.id)
+  category_id     uuid  (FK → service_categories.id)
+  price_per_hour  numeric
+  modality        enum  ('live', 'recorded', 'both')
+  is_active       boolean
+
+-- Reservas estándar (clases programadas, traducciones con fecha acordada)
+bookings
+  id              uuid
+  student_id      uuid  (FK → profiles.id)
+  provider_id     uuid  (FK → profiles.id)
+  offering_id     uuid  (FK → provider_offerings.id)
+  status          enum  ('pending', 'confirmed', 'completed', 'cancelled', 'no_show')
+  scheduled_at    timestamptz
+  duration_min    int
+  price           numeric
+  currency        text  (default 'COP')
+  meeting_url     text
+  recording_url   text
+  notes           text
+  created_at      timestamptz
+
+-- Flujo Express tipo Uber — solicitud urgente de intérprete o clase
+express_requests
+  id              uuid
+  student_id      uuid  (FK → profiles.id)
+  category_id     uuid  (FK → service_categories.id)
+  status          enum  ('pending', 'accepted', 'timeout', 'cancelled')
+  accepted_by     uuid  (FK → profiles.id, nullable)
+  price_offered   numeric
+  expires_at      timestamptz  -- el profesional tiene X segundos para aceptar
+  created_at      timestamptz
+
+-- Transacciones de pago
+payments
+  id                uuid
+  booking_id        uuid  (FK → bookings.id)
+  mp_payment_id     text  -- ID de Mercado Pago
+  amount            numeric
+  platform_fee      numeric  -- comisión de Yleis
+  provider_amount   numeric  -- lo que recibe el profesional
+  status            enum  ('pending', 'approved', 'rejected', 'refunded')
+  method            text  -- 'pse', 'credit_card', 'nequi', etc.
+  created_at        timestamptz
+
+-- Documentos de traducción
+documents
+  id              uuid
+  booking_id      uuid  (FK → bookings.id)
+  uploaded_by     uuid  (FK → profiles.id)
+  file_key        text  -- ruta en Supabase Storage
+  file_name       text
+  file_type       text
+  is_result       boolean  -- false = documento original, true = traducción entregada
+  created_at      timestamptz
+
+-- Calificaciones y reseñas
+reviews
+  id              uuid
+  booking_id      uuid  (FK → bookings.id, UNIQUE)
+  reviewer_id     uuid  (FK → profiles.id)
+  reviewed_id     uuid  (FK → profiles.id)
+  rating          int   (1–5)
+  comment         text
+  created_at      timestamptz
+
+-- Mensajes de chat entre cliente y profesional
+messages
+  id              uuid
+  booking_id      uuid  (FK → bookings.id)
+  sender_id       uuid  (FK → profiles.id)
+  content         text
+  read_at         timestamptz
+  created_at      timestamptz
+```
+
+---
+
+### 9. Flujo Express — Supabase Realtime (ventaja injusta)
+
+El flujo tipo Uber que antes requería **Django Channels + Redis + WebSockets**
+ahora es trivial con Supabase Realtime.
+
+**Cómo funciona:**
+```
+1. Cliente crea registro en express_requests (status: 'pending')
+         ↓
+2. Supabase Realtime emite el evento a todos los profesionales conectados
+         ↓
+3. El primer profesional en hacer UPDATE a 'accepted' gana la sesión
+         ↓
+4. Supabase actualiza el registro — los demás profesionales ven el cambio
+         ↓
+5. Se crea el booking y se genera el token de Agora
+```
+
+**Código en el frontend:**
+```typescript
+// src/hooks/useExpressRequests.ts  (a construir)
+// "use client" — necesita WebSocket del navegador
+import { createClient } from "@/lib/supabase/client";
+
+export function useExpressRequests(providerId: string) {
+  const supabase = createClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("express_requests")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "express_requests",
+          // Solo recibe solicitudes que coincidan con la categoría del profesional
+        },
+        (payload) => showExpressAlert(payload.new)
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
+  }, [providerId]);
+}
+```
+
+No se escribe casi nada de lógica backend. Todo ocurre por
+suscripciones a cambios de la base de datos en tiempo real.
+
+---
+
 ### Resumen de arquitectura de integraciones
 
 | Componente | Frontend (Next.js) | Backend (Django) | Servicio externo |
@@ -539,7 +747,7 @@ es el único punto de contacto con WebSockets. El resto de la app es HTTP normal
 | Video en vivo | Agora SDK (`agora-rtc-sdk-ng`) | Genera token de sala | Agora.io / Daily.co |
 | Grabación | Solo muestra el enlace | Activa Cloud Recording | Agora → S3 |
 | Archivos / documentos | Sube directo a S3 (presigned URL) | Genera presigned URLs | Amazon S3 / GCS |
-| Pagos | Stripe Elements (tokenizado) | PaymentIntent + Connect | Stripe |
+| Pagos | Mercado Pago SDK React | Preference + dispersión | Mercado Pago |
 | Notificaciones push | OneSignal SDK | Activa el envío | OneSignal / Twilio |
 | Correos | Solo muestra confirmación | Envía con Resend | Resend / SendGrid |
 | Tiempo real | WebSocket (`useRealtimeNotifications`) | Django Channels | Redis (Railway) |
@@ -553,8 +761,14 @@ es el único punto de contacto con WebSockets. El resto de la app es HTTP normal
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_USE_MOCKS=true
 
-# Pagos
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxx
+# Pagos (Mercado Pago)
+NEXT_PUBLIC_MP_PUBLIC_KEY=APP_USR-xxxx
+MP_ACCESS_TOKEN=APP_USR-xxxx             # solo en servidor
+
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyxxxx
+SUPABASE_SERVICE_ROLE_KEY=eyxxxx         # solo en servidor
 
 # Video
 NEXT_PUBLIC_AGORA_APP_ID=xxxx
