@@ -32,7 +32,6 @@ export const MOCK_BOOKINGS: Booking[] = [
     price: 40000,
     currency: "COP",
     sessionType: "group",
-    participantsCount: 4,
     rating: 4,
   },
   {
