@@ -783,6 +783,52 @@ CLERK_SECRET_KEY=sk_test_xxxx   # solo en servidor, nunca exponer
 
 ---
 
+## Eficiencia y tooling
+
+### Configurado en el proyecto
+
+| Herramienta | Qué hace | Comando |
+|---|---|---|
+| **Turbopack** | Compilador Rust — hot reload instantáneo | `npm run dev` (ya incluye `--turbo`) |
+| **Biome** | Linter + formateador 10–20x más rápido que ESLint | `npm run check` |
+| **Husky + lint-staged** | Bloquea commits con errores — corre Biome automáticamente | Automático en `git commit` |
+| **Bundle Analyzer** | Mapa visual del peso de cada librería | `ANALYZE=true npm run build` |
+| **optimizePackageImports** | Precarga lucide-react y Radix al arrancar | Automático en producción |
+| **Headers de seguridad** | X-Frame-Options, CSP, XSS Protection | Automático en todas las rutas |
+| **Imágenes AVIF/WebP** | Conversión automática a formatos modernos | Automático con `<Image />` |
+
+### Correcciones críticas de arquitectura (Gemini)
+
+**TanStack Query — retrasar la instalación:**
+En Next.js 15 con React Server Components, el 80% del fetching ocurre
+en el servidor sin hooks. Las mutaciones van con Server Actions y `useActionState`.
+Solo instalar TanStack Query si se necesita polling constante en el cliente
+(caso de uso muy específico). Next.js 15 ya maneja caché y actualizaciones optimistas.
+
+**Cloudflare + Vercel — no combinar:**
+Vercel ya tiene red Edge global con CDN, DDoS y SSL incluidos.
+Poner el proxy naranja de Cloudflare frente a Vercel causa redirect loops
+y rompe el caché de Next.js. Para el MVP: apuntar DNS directo a Vercel.
+
+**Turbopack — activación correcta:**
+No va en `next.config.ts`. Se activa con el flag `--turbo` en el script `dev`:
+```json
+"dev": "next dev --turbo"
+```
+
+### Plan de ataque recomendado (orden correcto)
+
+```
+1. HOY        → Biome + Turbopack + Husky (ya hecho ✓)
+2. HOY/MAÑANA → Supabase: crear tablas profiles, bookings, provider_offerings + RLS
+3. SEMANA 1   → Supabase Auth: login real, reemplazar CURRENT_USER por usuario autenticado
+4. SEMANA 2   → Mercado Pago: Server Action para cobrar reservas
+5. SEMANA 3   → Agora: sala de video funcional
+6. SEMANA 4   → Deploy en Vercel con dominio yleis.com
+```
+
+---
+
 ## Lo que falta por construir
 
 - [ ] Páginas internas: `/dashboard/learn`, `/dashboard/teach`, `/dashboard/translate`, `/dashboard/interpret`, `/dashboard/requests`
