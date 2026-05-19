@@ -270,6 +270,281 @@ Rama principal: `master`
 
 ---
 
+## Ecosistema de terceros
+
+Yleis no puede construir todo desde cero. Estas son las integraciones externas necesarias,
+por qué se eligieron y cómo se conectan al frontend.
+
+---
+
+### 1. Pasarela de pagos — Wompi / Mercado Pago
+
+**Problema:** Yleis retiene una comisión y paga al profesional — esto requiere
+**Split Payments** (pagos divididos). Los servidores bancarios colombianos
+tienen reglas de Retefuente, ReteICA e IVA que una pasarela local ya resuelve.
+
+**Flujo tipo Uber (Express):**
+1. Cliente ingresa tarjeta → se **tokeniza** (la tarjeta se guarda de forma segura, nunca en nuestra DB)
+2. Al conectar la sesión → **Pre-autorización** (reserva el saldo sin cobrar)
+3. Al finalizar la sesión → **Captura** del monto real cobrado
+4. Django envía la orden de **dispersión** → el % va al profesional, el % va a Yleis
+
+**Integraciones en el frontend:**
+
+```typescript
+// src/services/payment.service.ts
+// El formulario de tarjeta lo renderiza Wompi como widget iframe (PCI-DSS compliance)
+// El frontend NUNCA toca datos de tarjeta — solo recibe el token
+async tokenizeCard(): Promise<{ token: string }> { ... }
+async createPreAuthorization(token: string, amount: number): Promise<{ id: string }> { ... }
+async capturePayment(preAuthId: string, finalAmount: number): Promise<void> { ... }
+```
+
+**Variables de entorno necesarias:**
+```bash
+NEXT_PUBLIC_WOMPI_PUBLIC_KEY=pub_prod_xxxx   # clave pública (segura en frontend)
+# La clave privada NUNCA va en el frontend — solo en Django
+```
+
+**Documentación:**
+- Wompi: `https://docs.wompi.co`
+- Mercado Pago: `https://www.mercadopago.com.co/developers`
+
+---
+
+### 2. Video en vivo — Agora.io o Daily.co
+
+**Problema crítico:** transmitir video a través de Django destruye el proyecto
+en costos de ancho de banda y latencia. El video debe ir peer-to-peer (WebRTC)
+a través de servidores especializados.
+
+**Cómo funciona en Yleis:**
+
+```
+Cliente (Next.js)  ←── WebRTC ──→  Agora / Daily servers  ←── WebRTC ──→  Profesor (Next.js)
+                                           ↓
+                                   Cloud Recording (S3)
+                                   (activado por Django)
+```
+
+**Integración en el frontend:**
+
+```typescript
+// src/services/video.service.ts
+// Django genera el token de sala — el frontend solo lo consume
+async joinSession(sessionId: string): Promise<{ token: string; channel: string }> {
+  return apiClient.post("/v1/sessions/join/", { sessionId });
+}
+```
+
+```typescript
+// src/components/session/VideoRoom.tsx  (a construir)
+// "use client" — necesita acceso al navegador (cámara, micrófono)
+import AgoraRTC from "agora-rtc-sdk-ng";   // npm install agora-rtc-sdk-ng
+```
+
+**Grabación:** Django llama a la API de Agora al iniciar la sesión.
+Agora graba directo en S3. El frontend nunca maneja el video grabado —
+solo muestra un enlace firmado generado por Django.
+
+**Variables de entorno:**
+```bash
+NEXT_PUBLIC_AGORA_APP_ID=xxxx   # App ID de Agora (público, seguro en frontend)
+# El App Certificate va solo en Django para generar tokens
+```
+
+**Documentación:**
+- Agora Web SDK: `https://docs.agora.io/en/video-calling/get-started/get-started-sdk`
+- Daily.co React: `https://docs.daily.co/reference/daily-react`
+
+---
+
+### 3. Almacenamiento de archivos — Amazon S3 / Google Cloud Storage
+
+**Usos en Yleis:**
+- Documentos para traducción (PDF, DOCX) subidos por clientes
+- Grabaciones de clases (MP4) generadas por Agora
+- Fotos de perfil de usuarios
+- Documentos de verificación de profesionales (cédulas, diplomas)
+
+**Regla de seguridad — Presigned URLs:**
+El frontend NUNCA recibe URLs directas de S3.
+Django genera una URL firmada con expiración de 15 minutos.
+Solo el usuario autorizado puede descargar el documento durante ese tiempo.
+
+```typescript
+// Flujo de descarga segura
+// 1. Frontend pide la URL a Django (autenticado con JWT)
+const { url } = await apiClient.get(`/v1/documents/${docId}/download-url/`);
+// 2. Django valida permisos → genera presigned URL → devuelve al frontend
+// 3. Frontend abre la URL → S3 sirve el archivo directamente
+window.open(url, "_blank");
+```
+
+```typescript
+// Flujo de subida (cliente sube documento para traducción)
+// 1. Frontend pide a Django una presigned URL de SUBIDA
+const { uploadUrl, fileKey } = await apiClient.post("/v1/documents/upload-url/", { filename, contentType });
+// 2. Frontend sube directo a S3 (sin pasar por Django — más rápido)
+await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": contentType } });
+// 3. Frontend notifica a Django que la subida completó
+await apiClient.post("/v1/documents/confirm-upload/", { fileKey });
+```
+
+**Variables de entorno:** Todas las credenciales de S3 van **solo en Django**.
+El frontend no tiene ninguna clave de AWS/GCS.
+
+---
+
+### 4. Notificaciones — Twilio + OneSignal + Resend
+
+#### 4a. Notificaciones Push y SMS — OneSignal / Twilio
+
+**Caso crítico:** flujo Express — el profesional tiene 5–10 segundos para aceptar
+una solicitud. Si no hay notificación inmediata, el cliente abandona la plataforma.
+
+```
+Cliente solicita sesión
+    → Django publica evento en Redis (Django Channels)
+    → WebSocket activo en Next.js recibe el evento en tiempo real
+    → Si el profesional NO está conectado: Twilio envía SMS/WhatsApp
+    → Si está conectado: OneSignal envía Push Notification al navegador
+```
+
+**Integración frontend (WebSocket):**
+```typescript
+// src/hooks/useRealtimeNotifications.ts  (a construir)
+// "use client" — necesita WebSocket del navegador
+useEffect(() => {
+  const ws = new WebSocket(`wss://api.yleis.com/ws/notifications/?token=${jwt}`);
+  ws.onmessage = (event) => {
+    const { type, payload } = JSON.parse(event.data);
+    if (type === "SESSION_REQUEST") showSessionAlert(payload);
+  };
+  return () => ws.close();
+}, []);
+```
+
+**Variables de entorno:**
+```bash
+NEXT_PUBLIC_ONESIGNAL_APP_ID=xxxx   # público, seguro en frontend
+# Twilio credentials van solo en Django
+```
+
+#### 4b. Correos transaccionales — Resend
+
+**Usos:** confirmación de reserva, factura, recordatorio 24h antes,
+bienvenida al registrarse, recuperación de contraseña.
+
+**Integración:** 100% en Django. El frontend no llama a Resend directamente.
+Django envía el correo y el frontend solo muestra un mensaje de confirmación.
+
+**Por qué Resend y no Gmail/SMTP propio:**
+Los servidores de correo propios tienen alta tasa de spam.
+Resend tiene entregabilidad del 99% y logs en tiempo real.
+
+**Documentación:**
+- Resend: `https://resend.com/docs`
+- Twilio WhatsApp: `https://www.twilio.com/docs/whatsapp`
+- OneSignal Web Push: `https://documentation.onesignal.com/docs/web-push-quickstart`
+
+---
+
+### 5. Autenticación — JWT propio o Clerk
+
+**Opción A — JWT propio (Django Simple JWT):**
+Django genera el token, Next.js lo almacena en una cookie httpOnly
+(más segura que localStorage). Un middleware de Next.js verifica el token
+antes de renderizar cualquier página del dashboard.
+
+```typescript
+// src/middleware.ts  (a construir)
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("yleis_token");
+  if (!token && request.nextUrl.pathname.startsWith("/dashboard")) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+}
+export const config = { matcher: ["/dashboard/:path*"] };
+```
+
+**Opción B — Clerk (acelera el desarrollo):**
+Autenticación lista en 30 minutos. Maneja login, registro, OAuth (Google/Facebook),
+MFA y gestión de sesiones. El backend Django verifica los tokens de Clerk.
+Recomendado para el MVP, migrable a JWT propio después.
+
+**Documentación:**
+- Django Simple JWT: `https://django-rest-framework-simplejwt.readthedocs.io`
+- Clerk Next.js: `https://clerk.com/docs/quickstarts/nextjs`
+
+---
+
+### 6. Tiempo real — Django Channels + Redis
+
+**Usos en Yleis:**
+- Alertas express al profesional cuando hay una solicitud nueva
+- Chat entre cliente y profesional dentro de la sesión
+- Actualizaciones del estado de la sesión (esperando → en curso → finalizada)
+- Indicador de "el profesional está escribiendo"
+
+**Arquitectura:**
+```
+Next.js (WebSocket cliente)
+    ↕ wss://
+Django Channels (WebSocket servidor)
+    ↕
+Redis (message broker — Railway o AWS ElastiCache)
+```
+
+**Integración frontend:** el hook `useRealtimeNotifications` (descrito arriba)
+es el único punto de contacto con WebSockets. El resto de la app es HTTP normal.
+
+**Documentación:**
+- Django Channels: `https://channels.readthedocs.io`
+
+---
+
+### Resumen de arquitectura de integraciones
+
+| Componente | Frontend (Next.js) | Backend (Django) | Servicio externo |
+|---|---|---|---|
+| Autenticación | Middleware + cookie httpOnly | Simple JWT o Clerk verify | Clerk (opcional) |
+| Video en vivo | Agora SDK (`agora-rtc-sdk-ng`) | Genera token de sala | Agora.io / Daily.co |
+| Grabación | Solo muestra el enlace | Activa Cloud Recording | Agora → S3 |
+| Archivos / documentos | Sube directo a S3 (presigned URL) | Genera presigned URLs | Amazon S3 / GCS |
+| Pagos | Widget iframe tokenizado | Split payment + dispersión | Wompi / Mercado Pago |
+| Notificaciones push | OneSignal SDK | Activa el envío | OneSignal / Twilio |
+| Correos | Solo muestra confirmación | Envía con Resend | Resend / SendGrid |
+| Tiempo real | WebSocket (`useRealtimeNotifications`) | Django Channels | Redis (Railway) |
+
+---
+
+### Variables de entorno completas (`.env.local`)
+
+```bash
+# Backend
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_USE_MOCKS=true
+
+# Pagos
+NEXT_PUBLIC_WOMPI_PUBLIC_KEY=pub_test_xxxx
+
+# Video
+NEXT_PUBLIC_AGORA_APP_ID=xxxx
+
+# Notificaciones push
+NEXT_PUBLIC_ONESIGNAL_APP_ID=xxxx
+
+# Autenticación (si se usa Clerk)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxx
+CLERK_SECRET_KEY=sk_test_xxxx   # solo en servidor, nunca exponer
+```
+
+---
+
 ## Lo que falta por construir
 
 - [ ] Páginas internas: `/dashboard/learn`, `/dashboard/teach`, `/dashboard/translate`, `/dashboard/interpret`, `/dashboard/requests`
