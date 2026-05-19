@@ -1,42 +1,78 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import {
-  User,
-  Calendar,
-  BookOpen,
-  Settings,
-  LayoutDashboard,
-  MessageSquare,
-  CreditCard,
-  HelpCircle,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  GraduationCap,
-  Languages,
-  Mic2,
-  FileText,
-} from "lucide-react";
-import { useState } from "react";
-import { cn, getInitials } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { createClient } from "@/lib/supabase/client";
+import { cn, getInitials } from "@/lib/utils";
 import type { UserProfile } from "@/types/user.types";
+import {
+  BookOpen,
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  FileText,
+  GraduationCap,
+  HelpCircle,
+  Languages,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Mic2,
+  Settings,
+  User,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["student", "teacher", "translator", "interpreter", "admin"] },
-  { label: "Mi Perfil", href: "/dashboard/profile", icon: User, roles: ["student", "teacher", "translator", "interpreter", "admin"] },
+  {
+    label: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    roles: ["student", "teacher", "translator", "interpreter", "admin"],
+  },
+  {
+    label: "Mi Perfil",
+    href: "/dashboard/profile",
+    icon: User,
+    roles: ["student", "teacher", "translator", "interpreter", "admin"],
+  },
   { label: "Aprende", href: "/dashboard/learn", icon: GraduationCap, roles: ["student"] },
   { label: "Enseña", href: "/dashboard/teach", icon: BookOpen, roles: ["teacher"] },
   { label: "Traduce", href: "/dashboard/translate", icon: Languages, roles: ["translator"] },
   { label: "Interpreta", href: "/dashboard/interpret", icon: Mic2, roles: ["interpreter"] },
-  { label: "Mis Solicitudes", href: "/dashboard/requests", icon: FileText, roles: ["student", "admin"] },
-  { label: "Mis Clases", href: "/dashboard/classes", icon: BookOpen, roles: ["student", "teacher"] },
-  { label: "Calendario", href: "/dashboard/calendar", icon: Calendar, roles: ["student", "teacher", "translator", "interpreter", "admin"] },
-  { label: "Mensajes", href: "/dashboard/messages", icon: MessageSquare, roles: ["student", "teacher", "translator", "interpreter", "admin"] },
-  { label: "Pagos", href: "/dashboard/billing", icon: CreditCard, roles: ["student", "teacher", "translator", "interpreter", "admin"] },
+  {
+    label: "Mis Solicitudes",
+    href: "/dashboard/requests",
+    icon: FileText,
+    roles: ["student", "admin"],
+  },
+  {
+    label: "Mis Clases",
+    href: "/dashboard/classes",
+    icon: BookOpen,
+    roles: ["student", "teacher"],
+  },
+  {
+    label: "Calendario",
+    href: "/dashboard/calendar",
+    icon: Calendar,
+    roles: ["student", "teacher", "translator", "interpreter", "admin"],
+  },
+  {
+    label: "Mensajes",
+    href: "/dashboard/messages",
+    icon: MessageSquare,
+    roles: ["student", "teacher", "translator", "interpreter", "admin"],
+  },
+  {
+    label: "Pagos",
+    href: "/dashboard/billing",
+    icon: CreditCard,
+    roles: ["student", "teacher", "translator", "interpreter", "admin"],
+  },
 ] as const;
 
 const BOTTOM_ITEMS = [
@@ -48,11 +84,21 @@ type SidebarProps = { user: UserProfile };
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const visibleNav = NAV_ITEMS.filter((item) =>
     (item.roles as readonly string[]).includes(user.role)
   );
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <aside
@@ -70,7 +116,9 @@ export function Sidebar({ user }: SidebarProps) {
           {!collapsed && (
             <div>
               <span className="block text-lg font-black tracking-tight text-foreground">Yleis</span>
-              <span className="block text-[10px] text-muted-foreground leading-none">Palabras que conectan</span>
+              <span className="block text-[10px] text-muted-foreground leading-none">
+                Palabras que conectan
+              </span>
             </div>
           )}
         </div>
@@ -97,7 +145,9 @@ export function Sidebar({ user }: SidebarProps) {
                   <Icon
                     className={cn(
                       "h-4 w-4 shrink-0 transition-colors",
-                      isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      isActive
+                        ? "text-primary"
+                        : "text-muted-foreground group-hover:text-foreground"
                     )}
                   />
                   {!collapsed && <span className="truncate">{label}</span>}
@@ -150,7 +200,14 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
         )}
         {!collapsed && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+            onClick={handleLogout}
+            disabled={loggingOut}
+            title="Cerrar sesión"
+          >
             <LogOut className="h-4 w-4" />
           </Button>
         )}
@@ -158,6 +215,7 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Collapse toggle */}
       <button
+        type="button"
         onClick={() => setCollapsed(!collapsed)}
         className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-background shadow-md hover:bg-accent"
       >

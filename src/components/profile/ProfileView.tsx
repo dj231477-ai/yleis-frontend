@@ -1,11 +1,12 @@
 "use client";
 
+import { profileService } from "@/services/profile.service";
+import type { Booking, UpcomingClass } from "@/types/booking.types";
+import type { UserProfile } from "@/types/user.types";
 import { useState } from "react";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileTabs } from "./ProfileTabs";
 import { ServicesOverviewSection } from "./ServicesOverviewSection";
-import type { UserProfile } from "@/types/user.types";
-import type { Booking, UpcomingClass } from "@/types/booking.types";
 
 type Props = {
   initialUser: UserProfile;
@@ -21,9 +22,18 @@ export function ProfileView({ initialUser, initialBookings, initialUpcomingClass
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  async function handleAvatarChange(file: File) {
+    const { avatarUrl } = await profileService.uploadAvatar(file);
+    setUser((prev) => ({ ...prev, avatarUrl }));
+  }
+
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">
-      <ProfileHeader user={user} onEditClick={handleEditClick} />
+      <ProfileHeader
+        user={user}
+        onEditClick={handleEditClick}
+        onAvatarChange={handleAvatarChange}
+      />
 
       <ServicesOverviewSection role={user.role} />
 

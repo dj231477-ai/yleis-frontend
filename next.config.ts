@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "api.dicebear.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
-      // Agregar: { protocol: "https", hostname: "xxxx.supabase.co" }
+      { protocol: "https", hostname: "rrqoizdeoqzawqiuhlns.supabase.co" },
     ],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [32, 48, 64, 96, 128],

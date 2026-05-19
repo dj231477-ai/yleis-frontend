@@ -1,22 +1,39 @@
 "use client";
 
-import Image from "next/image";
-import { Camera, MapPin, Calendar, CheckCircle2, ArrowRightLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { RoleBadge } from "@/components/shared/RoleBadge";
-import { getInitials, formatDate } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatDate, getInitials } from "@/lib/utils";
 import type { UserProfile } from "@/types/user.types";
+import { ArrowRightLeft, Calendar, Camera, CheckCircle2, Loader2, MapPin } from "lucide-react";
+import Image from "next/image";
+import { useRef, useState } from "react";
 
 type ProfileHeaderProps = {
   user: UserProfile;
   onEditClick: () => void;
+  onAvatarChange: (file: File) => Promise<void>;
 };
 
-export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
+export function ProfileHeader({ user, onEditClick, onAvatarChange }: ProfileHeaderProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      await onAvatarChange(file);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   return (
     <div className="relative overflow-hidden rounded-xl border border-border bg-card">
-      {/* Banner — gradiente con acento Yleis */}
+      {/* Banner */}
       <div className="h-28 bg-gradient-to-br from-primary/30 via-primary/10 to-background" />
 
       <div className="px-6 pb-6">
@@ -40,9 +57,28 @@ export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
                   </div>
                 )}
               </div>
-              <button className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-transform hover:scale-110">
-                <Camera className="h-3.5 w-3.5" />
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-md transition-transform hover:scale-110 disabled:opacity-70"
+                title="Cambiar foto"
+              >
+                {uploading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Camera className="h-3.5 w-3.5" />
+                )}
               </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
             </div>
 
             <div className="mb-1 space-y-1">
@@ -50,9 +86,7 @@ export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
                 <h2 className="text-xl font-bold text-foreground">
                   {user.firstName} {user.lastName}
                 </h2>
-                {user.isEmailVerified && (
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                )}
+                {user.isEmailVerified && <CheckCircle2 className="h-5 w-5 text-primary" />}
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <RoleBadge role={user.role} />
@@ -81,7 +115,6 @@ export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
             Miembro desde {formatDate(user.joinedAt)}
           </span>
 
-          {/* Idiomas para estudiantes y docentes */}
           {user.languages.length > 0 && !user.languagePairs && (
             <span className="flex items-center gap-1.5">
               {user.languages.map((l) => (
@@ -93,7 +126,6 @@ export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
             </span>
           )}
 
-          {/* Pares de idiomas para traductores/intérpretes */}
           {user.languagePairs && user.languagePairs.length > 0 && (
             <span className="flex items-center gap-1.5">
               <ArrowRightLeft className="h-3.5 w-3.5" />
@@ -103,7 +135,6 @@ export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
             </span>
           )}
 
-          {/* Especializaciones */}
           {user.specializations && user.specializations.length > 0 && (
             <span className="text-xs text-muted-foreground">
               {user.specializations.join(" · ")}
@@ -111,11 +142,8 @@ export function ProfileHeader({ user, onEditClick }: ProfileHeaderProps) {
           )}
         </div>
 
-        {/* Bio */}
         {user.bio && (
-          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {user.bio}
-          </p>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground">{user.bio}</p>
         )}
       </div>
     </div>

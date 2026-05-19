@@ -1,16 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { UserProfile } from "@/types/user.types";
 import type { Booking, UpcomingClass } from "@/types/booking.types";
-import { PersonalInfoSection } from "./PersonalInfoSection";
+import type { UserProfile } from "@/types/user.types";
+import { useState } from "react";
 import { BookingHistorySection } from "./BookingHistorySection";
 import { ClassPreferencesSection } from "./ClassPreferencesSection";
-import { SecuritySection } from "./SecuritySection";
 import { GoogleCalendarSection } from "./GoogleCalendarSection";
-import { UpcomingClassesSection } from "./UpcomingClassesSection";
 import { NotificationsSection } from "./NotificationsSection";
+import { PersonalInfoSection } from "./PersonalInfoSection";
+import { SecuritySection } from "./SecuritySection";
+import { UpcomingClassesSection } from "./UpcomingClassesSection";
 
 const TABS = [
   { id: "personal", label: "Personal" },
@@ -42,6 +42,7 @@ export function ProfileTabs({ user, bookings, upcomingClasses, onUserUpdate }: P
           {TABS.map((tab) => (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveTab(tab.id)}
               className={cn(
                 "rounded-lg px-4 py-2 text-sm font-medium transition-all",
@@ -58,21 +59,13 @@ export function ProfileTabs({ user, bookings, upcomingClasses, onUserUpdate }: P
 
       {/* Tab content */}
       <div>
-        {activeTab === "personal" && (
-          <PersonalInfoSection user={user} onUpdate={onUserUpdate} />
-        )}
-        {activeTab === "upcoming" && (
-          <UpcomingClassesSection classes={upcomingClasses} />
-        )}
-        {activeTab === "history" && (
-          <BookingHistorySection bookings={bookings} />
-        )}
+        {activeTab === "personal" && <PersonalInfoSection user={user} onUpdate={onUserUpdate} />}
+        {activeTab === "upcoming" && <UpcomingClassesSection classes={upcomingClasses} />}
+        {activeTab === "history" && <BookingHistorySection bookings={bookings} />}
         {activeTab === "preferences" && (
-          <ClassPreferencesSection user={user} />
+          <ClassPreferencesSection user={user} onUpdate={onUserUpdate} />
         )}
-        {activeTab === "security" && (
-          <SecuritySection user={user} />
-        )}
+        {activeTab === "security" && <SecuritySection user={user} />}
         {activeTab === "integrations" && (
           <GoogleCalendarSection
             user={user}
@@ -80,7 +73,7 @@ export function ProfileTabs({ user, bookings, upcomingClasses, onUserUpdate }: P
           />
         )}
         {activeTab === "notifications" && (
-          <NotificationsSection user={user} />
+          <NotificationsSection user={user} onUpdate={onUserUpdate} />
         )}
       </div>
     </div>

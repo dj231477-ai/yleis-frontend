@@ -56,6 +56,15 @@ export type UserPreferences = {
 export type ProfileUpdatePayload = Partial<
   Pick<
     UserProfile,
-    "firstName" | "lastName" | "phone" | "city" | "country" | "timezone" | "bio" | "languages" | "subjects"
+    | "firstName"
+    | "lastName"
+    | "phone"
+    | "city"
+    | "country"
+    | "timezone"
+    | "bio"
+    | "languages"
+    | "subjects"
+    | "preferences"
   >
 >;
