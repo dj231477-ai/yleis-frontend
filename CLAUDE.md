@@ -277,38 +277,62 @@ por qué se eligieron y cómo se conectan al frontend.
 
 ---
 
-### 1. Pasarela de pagos — Wompi / Mercado Pago
+### 1. Pasarela de pagos — Stripe
 
-**Problema:** Yleis retiene una comisión y paga al profesional — esto requiere
-**Split Payments** (pagos divididos). Los servidores bancarios colombianos
-tienen reglas de Retefuente, ReteICA e IVA que una pasarela local ya resuelve.
+**Por qué Stripe sobre Wompi/Mercado Pago:**
+- Documentación superior y SDKs de React oficiales (`@stripe/react-stripe-js`)
+- **Stripe Connect** es el estándar de la industria para marketplaces (Uber, Airbnb, Fiverr)
+- Soporte nativo para Split Payments, Pre-autorizaciones y Tokenización
+- Dashboard de administración muy completo para ver transacciones, disputas y reembolsos
 
-**Flujo tipo Uber (Express):**
-1. Cliente ingresa tarjeta → se **tokeniza** (la tarjeta se guarda de forma segura, nunca en nuestra DB)
-2. Al conectar la sesión → **Pre-autorización** (reserva el saldo sin cobrar)
-3. Al finalizar la sesión → **Captura** del monto real cobrado
-4. Django envía la orden de **dispersión** → el % va al profesional, el % va a Yleis
+**⚠️ Advertencia importante para Colombia:**
+Stripe opera en Colombia pero **no soporta PSE** (débito bancario), que es
+el método de pago más usado por los colombianos. Para el MVP con tarjetas
+de crédito/débito Stripe es perfecto. Si necesitas PSE en el futuro,
+se puede agregar Wompi solo para ese método específico.
 
-**Integraciones en el frontend:**
+**Flujo tipo Uber con Stripe Connect:**
+1. Profesional se registra → crea cuenta Stripe Connect (Express Account)
+2. Cliente ingresa tarjeta → **Stripe Elements** tokeniza (nunca pasa por nuestro servidor)
+3. Al iniciar sesión → **Pre-autorización** (`payment_intent` con `capture_method: manual`)
+4. Al finalizar → **Captura** del monto final
+5. Stripe divide automáticamente → comisión a Yleis + pago al profesional
+
+**Paquetes necesarios:**
+```bash
+npm install @stripe/stripe-js @stripe/react-stripe-js
+```
+
+**Integración en el frontend:**
+```typescript
+// src/components/payments/CheckoutForm.tsx  (a construir)
+// "use client" — Stripe Elements necesita el navegador
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+// El frontend NUNCA maneja datos de tarjeta en crudo — Stripe los tokeniza
+```
 
 ```typescript
 // src/services/payment.service.ts
-// El formulario de tarjeta lo renderiza Wompi como widget iframe (PCI-DSS compliance)
-// El frontend NUNCA toca datos de tarjeta — solo recibe el token
-async tokenizeCard(): Promise<{ token: string }> { ... }
-async createPreAuthorization(token: string, amount: number): Promise<{ id: string }> { ... }
-async capturePayment(preAuthId: string, finalAmount: number): Promise<void> { ... }
+async createPaymentIntent(amount: number, sessionId: string): Promise<{ clientSecret: string }> {
+  // Django crea el PaymentIntent y devuelve el clientSecret
+  // El frontend usa el clientSecret para confirmar con Stripe directamente
+  return apiClient.post("/v1/payments/create-intent/", { amount, sessionId });
+}
 ```
 
-**Variables de entorno necesarias:**
+**Variables de entorno:**
 ```bash
-NEXT_PUBLIC_WOMPI_PUBLIC_KEY=pub_prod_xxxx   # clave pública (segura en frontend)
-# La clave privada NUNCA va en el frontend — solo en Django
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxx   # pública, segura en frontend
+# STRIPE_SECRET_KEY va SOLO en Django — nunca en el frontend
 ```
 
 **Documentación:**
-- Wompi: `https://docs.wompi.co`
-- Mercado Pago: `https://www.mercadopago.com.co/developers`
+- Stripe React: `https://stripe.com/docs/stripe-js/react`
+- Stripe Connect (marketplaces): `https://stripe.com/docs/connect`
+- Stripe en Colombia: `https://stripe.com/global`
 
 ---
 
@@ -515,7 +539,7 @@ es el único punto de contacto con WebSockets. El resto de la app es HTTP normal
 | Video en vivo | Agora SDK (`agora-rtc-sdk-ng`) | Genera token de sala | Agora.io / Daily.co |
 | Grabación | Solo muestra el enlace | Activa Cloud Recording | Agora → S3 |
 | Archivos / documentos | Sube directo a S3 (presigned URL) | Genera presigned URLs | Amazon S3 / GCS |
-| Pagos | Widget iframe tokenizado | Split payment + dispersión | Wompi / Mercado Pago |
+| Pagos | Stripe Elements (tokenizado) | PaymentIntent + Connect | Stripe |
 | Notificaciones push | OneSignal SDK | Activa el envío | OneSignal / Twilio |
 | Correos | Solo muestra confirmación | Envía con Resend | Resend / SendGrid |
 | Tiempo real | WebSocket (`useRealtimeNotifications`) | Django Channels | Redis (Railway) |
@@ -530,7 +554,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_USE_MOCKS=true
 
 # Pagos
-NEXT_PUBLIC_WOMPI_PUBLIC_KEY=pub_test_xxxx
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxxx
 
 # Video
 NEXT_PUBLIC_AGORA_APP_ID=xxxx
