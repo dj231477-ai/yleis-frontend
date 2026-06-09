@@ -3,45 +3,15 @@
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { profileService } from "@/services/profile.service";
 import type { UserProfile } from "@/types/user.types";
-import { CalendarDays, CheckCircle2, Link2, Loader2, Unlink2, XCircle } from "lucide-react";
-import { useState } from "react";
+import { CalendarDays, CheckCircle2, Link2, Unlink2, XCircle } from "lucide-react";
 
 type Props = {
   user: UserProfile;
   onUpdate: (updated: Partial<UserProfile>) => void;
 };
 
-export function GoogleCalendarSection({ user, onUpdate }: Props) {
-  const [isLoading, setIsLoading] = useState(false);
-
-  const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
-
-  async function handleConnect() {
-    if (!USE_MOCKS) return;
-    setIsLoading(true);
-    try {
-      const { authUrl } = await profileService.connectGoogleCalendar();
-      if (authUrl === "#mock-google-oauth") {
-        onUpdate({ googleCalendarConnected: true, googleCalendarEmail: "mock@gmail.com" });
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleDisconnect() {
-    if (!USE_MOCKS) return;
-    setIsLoading(true);
-    try {
-      await profileService.disconnectGoogleCalendar();
-      onUpdate({ googleCalendarConnected: false, googleCalendarEmail: undefined });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
+export function GoogleCalendarSection({ user }: Props) {
   return (
     <SectionCard
       title="Google Calendar"
@@ -50,7 +20,6 @@ export function GoogleCalendarSection({ user, onUpdate }: Props) {
     >
       <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
         <div className="flex items-center gap-3">
-          {/* Google icon SVG */}
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-sm">
             <svg viewBox="0 0 24 24" className="h-6 w-6" role="img" aria-label="Google">
               <path
@@ -92,31 +61,21 @@ export function GoogleCalendarSection({ user, onUpdate }: Props) {
         </div>
 
         {user.googleCalendarConnected ? (
-          <Button variant="outline" size="sm" onClick={handleDisconnect} disabled={isLoading}>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Unlink2 className="h-4 w-4" />
-            )}
+          <Button variant="outline" size="sm" disabled>
+            <Unlink2 className="h-4 w-4" />
             Desconectar
           </Button>
         ) : (
-          <Button size="sm" onClick={handleConnect} disabled={isLoading}>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Link2 className="h-4 w-4" />
-            )}
+          <Button size="sm" disabled title="Disponible próximamente">
+            <Link2 className="h-4 w-4" />
             Conectar
           </Button>
         )}
       </div>
 
-      {user.googleCalendarConnected && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Tus próximas clases se sincronizan automáticamente con tu Google Calendar.
-        </p>
-      )}
+      <p className="mt-3 text-xs text-muted-foreground">
+        Integración con Google Calendar disponible próximamente.
+      </p>
     </SectionCard>
   );
 }

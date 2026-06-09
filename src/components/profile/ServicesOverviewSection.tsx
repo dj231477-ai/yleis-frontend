@@ -1,6 +1,6 @@
-import Link from "next/link";
-import { GraduationCap, Languages, Mic2, BookOpen, ArrowRight, Users } from "lucide-react";
 import type { UserRole } from "@/types/user.types";
+import { ArrowRight, BookOpen, GraduationCap, Users } from "lucide-react";
+import Link from "next/link";
 
 type ServiceDef = {
   id: string;
@@ -16,36 +16,19 @@ const SECTION_A: ServiceDef[] = [
   {
     id: "learn",
     title: "Aprende",
-    description: "Reserva clases en vivo con docentes nativos y certificados. Todos los niveles e idiomas.",
+    description:
+      "Reserva clases en vivo con docentes nativos y certificados. Todos los niveles e idiomas.",
     cta: "Explorar clases",
     icon: GraduationCap,
     href: "/dashboard/learn",
-    activeRoles: ["student", "admin"],
-  },
-  {
-    id: "request",
-    title: "Solicita una traducción o un intérprete",
-    description: "Conecta con traductores e intérpretes profesionales para documentos, eventos y reuniones.",
-    cta: "Hacer una solicitud",
-    icon: Languages,
-    href: "/dashboard/requests",
     activeRoles: ["student", "admin"],
   },
 ];
 
 const SECTION_B: ServiceDef[] = [
   {
-    id: "translate",
-    title: "Ofrece tus servicios como traductor o intérprete",
-    description: "Publica tu perfil, recibe solicitudes y gestiona tus proyectos de traducción e interpretación.",
-    cta: "Ofrecer servicios",
-    icon: Mic2,
-    href: "/dashboard/translate",
-    activeRoles: ["translator", "interpreter", "admin"],
-  },
-  {
     id: "teach",
-    title: "Ofrece tus servicios de enseñanza",
+    title: "Ofrece tus clases",
     description: "Crea tu perfil de docente, define tus horarios y empieza a recibir estudiantes.",
     cta: "Ofrecer clases",
     icon: BookOpen,
@@ -59,14 +42,15 @@ type Props = { role: UserRole };
 export function ServicesOverviewSection({ role }: Props) {
   return (
     <div className="space-y-6">
-
       {/* ── Sección A: Soy cliente ── */}
       <div>
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
             <Users className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
           </div>
-          <span className="text-sm font-semibold text-foreground">Quiero contratar un servicio</span>
+          <span className="text-sm font-semibold text-foreground">
+            Quiero contratar un servicio
+          </span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
@@ -83,7 +67,9 @@ export function ServicesOverviewSection({ role }: Props) {
           <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
             <GraduationCap className="h-3.5 w-3.5 text-primary" />
           </div>
-          <span className="text-sm font-semibold text-foreground">Quiero ofrecer mis servicios</span>
+          <span className="text-sm font-semibold text-foreground">
+            Quiero ofrecer mis servicios
+          </span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
@@ -93,7 +79,6 @@ export function ServicesOverviewSection({ role }: Props) {
           ))}
         </div>
       </div>
-
     </div>
   );
 }
@@ -102,24 +87,25 @@ export function ServicesOverviewSection({ role }: Props) {
 
 const COLOR = {
   blue: {
-    active:     "border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/10",
-    inactive:   "border-border bg-card hover:border-blue-200 hover:bg-blue-50/50 dark:hover:border-blue-800/40 dark:hover:bg-blue-900/5",
-    icon:       "bg-blue-100 dark:bg-blue-900/30",
-    iconColor:  "text-blue-600 dark:text-blue-400",
-    title:      "text-blue-700 dark:text-blue-400",
-    cta:        "text-blue-600 dark:text-blue-400",
-    bar:        "bg-blue-500",
-    badge:      "bg-blue-600",
+    active: "border-blue-200 bg-blue-50 dark:border-blue-800/50 dark:bg-blue-900/10",
+    inactive:
+      "border-border bg-card hover:border-blue-200 hover:bg-blue-50/50 dark:hover:border-blue-800/40 dark:hover:bg-blue-900/5",
+    icon: "bg-blue-100 dark:bg-blue-900/30",
+    iconColor: "text-blue-600 dark:text-blue-400",
+    title: "text-blue-700 dark:text-blue-400",
+    cta: "text-blue-600 dark:text-blue-400",
+    bar: "bg-blue-500",
+    badge: "bg-blue-600",
   },
   red: {
-    active:     "border-primary/20 bg-primary/5 dark:border-primary/30 dark:bg-primary/10",
-    inactive:   "border-border bg-card hover:border-primary/20 hover:bg-primary/5",
-    icon:       "bg-primary/10",
-    iconColor:  "text-primary",
-    title:      "text-primary",
-    cta:        "text-primary",
-    bar:        "bg-primary",
-    badge:      "bg-primary",
+    active: "border-primary/20 bg-primary/5 dark:border-primary/30 dark:bg-primary/10",
+    inactive: "border-border bg-card hover:border-primary/20 hover:bg-primary/5",
+    icon: "bg-primary/10",
+    iconColor: "text-primary",
+    title: "text-primary",
+    cta: "text-primary",
+    bar: "bg-primary",
+    badge: "bg-primary",
   },
 };
 
@@ -143,17 +129,23 @@ function Card({ service, active, color }: CardProps) {
       `}
     >
       {/* Barra superior de color */}
-      <div className={`absolute inset-x-0 top-0 h-[3px] ${c.bar} ${active ? "opacity-70" : "opacity-0 group-hover:opacity-40"} transition-opacity`} />
+      <div
+        className={`absolute inset-x-0 top-0 h-[3px] ${c.bar} ${active ? "opacity-70" : "opacity-0 group-hover:opacity-40"} transition-opacity`}
+      />
 
       {/* Badge "Tu servicio" */}
       {active && (
-        <span className={`absolute right-3 top-3 rounded-full ${c.badge} px-2 py-0.5 text-[10px] font-bold text-white`}>
+        <span
+          className={`absolute right-3 top-3 rounded-full ${c.badge} px-2 py-0.5 text-[10px] font-bold text-white`}
+        >
           Tu servicio
         </span>
       )}
 
       {/* Icono */}
-      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${c.icon} transition-transform group-hover:scale-110`}>
+      <div
+        className={`flex h-10 w-10 items-center justify-center rounded-xl ${c.icon} transition-transform group-hover:scale-110`}
+      >
         <Icon className={`h-5 w-5 ${c.iconColor}`} />
       </div>
 
@@ -162,13 +154,13 @@ function Card({ service, active, color }: CardProps) {
         <p className={`text-sm font-bold leading-snug ${active ? c.title : "text-foreground"}`}>
           {title}
         </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-          {description}
-        </p>
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
       </div>
 
       {/* CTA */}
-      <div className={`mt-4 flex items-center gap-1 text-xs font-semibold ${c.cta} transition-all group-hover:gap-2`}>
+      <div
+        className={`mt-4 flex items-center gap-1 text-xs font-semibold ${c.cta} transition-all group-hover:gap-2`}
+      >
         {cta}
         <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-1" />
       </div>

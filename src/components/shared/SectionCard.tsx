@@ -1,6 +1,6 @@
-import { type LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import type { LucideIcon } from "lucide-react";
 
 type SectionCardProps = {
   title: string;
@@ -33,7 +33,9 @@ export function SectionCard({
             )}
             <div>
               <CardTitle className="text-base">{title}</CardTitle>
-              {description && <CardDescription className="mt-0.5 text-xs">{description}</CardDescription>}
+              {description && (
+                <CardDescription className="mt-0.5 text-xs">{description}</CardDescription>
+              )}
             </div>
           </div>
           {action && <div className="shrink-0">{action}</div>}

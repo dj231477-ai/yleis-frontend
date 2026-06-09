@@ -1,17 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { User, Mail, Phone, MapPin, Globe2, Clock, Loader2, Check } from "lucide-react";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { personalInfoSchema, type PersonalInfoFormValues } from "@/lib/validations/profile";
+import { type PersonalInfoFormValues, personalInfoSchema } from "@/lib/validations/profile";
 import { profileService } from "@/services/profile.service";
 import type { UserProfile } from "@/types/user.types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Check, Clock, Globe2, Loader2, Mail, MapPin, Phone, User } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 type Props = {
   user: UserProfile;
@@ -91,16 +91,38 @@ export function PersonalInfoSection({ user, onUpdate }: Props) {
     >
       {!isEditing ? (
         <div className="divide-y divide-border">
-          <InfoRow label="Nombre completo" icon={<User className="h-4 w-4" />} value={`${user.firstName} ${user.lastName}`} />
-          <InfoRow label="Correo electrónico" icon={<Mail className="h-4 w-4" />} value={user.email} />
-          <InfoRow label="Teléfono" icon={<Phone className="h-4 w-4" />} value={user.phone ?? "No registrado"} />
-          <InfoRow label="Ciudad" icon={<MapPin className="h-4 w-4" />} value={`${user.city}, ${user.country}`} />
-          <InfoRow label="Zona horaria" icon={<Clock className="h-4 w-4" />} value={user.timezone} />
+          <InfoRow
+            label="Nombre completo"
+            icon={<User className="h-4 w-4" />}
+            value={`${user.firstName} ${user.lastName}`}
+          />
+          <InfoRow
+            label="Correo electrónico"
+            icon={<Mail className="h-4 w-4" />}
+            value={user.email}
+          />
+          <InfoRow
+            label="Teléfono"
+            icon={<Phone className="h-4 w-4" />}
+            value={user.phone ?? "No registrado"}
+          />
+          <InfoRow
+            label="Ciudad"
+            icon={<MapPin className="h-4 w-4" />}
+            value={`${user.city}, ${user.country}`}
+          />
+          <InfoRow
+            label="Zona horaria"
+            icon={<Clock className="h-4 w-4" />}
+            value={user.timezone}
+          />
           {user.languages.length > 0 && (
             <InfoRow
               label="Idiomas"
               icon={<Globe2 className="h-4 w-4" />}
-              value={user.languages.map((l) => `${l.flag} ${l.name}${l.level ? ` (${l.level})` : ""}`).join(" · ")}
+              value={user.languages
+                .map((l) => `${l.flag} ${l.name}${l.level ? ` (${l.level})` : ""}`)
+                .join(" · ")}
             />
           )}
         </div>
@@ -111,7 +133,9 @@ export function PersonalInfoSection({ user, onUpdate }: Props) {
               <Label htmlFor="firstName">Nombre</Label>
               <Input id="firstName" {...form.register("firstName")} />
               {form.formState.errors.firstName && (
-                <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.firstName.message}
+                </p>
               )}
             </div>
             <div className="space-y-1.5">
@@ -161,14 +185,24 @@ export function PersonalInfoSection({ user, onUpdate }: Props) {
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
               Cancelar
             </Button>
             <Button type="submit" size="sm" disabled={isSaving}>
               {isSaving ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</>
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                </>
               ) : saved ? (
-                <><Check className="h-4 w-4" /> Guardado</>
+                <>
+                  <Check className="h-4 w-4" /> Guardado
+                </>
               ) : (
                 "Guardar cambios"
               )}

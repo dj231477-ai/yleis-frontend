@@ -1,7 +1,7 @@
 import type { Database } from "@/types/database.types";
-import type { Language, UserProfile } from "@/types/user.types";
+import type { UserProfile } from "@/types/user.types";
 
-type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type UserRow = Database["public"]["Tables"]["users"]["Row"];
 
 type AuthUser = {
   id: string;
@@ -22,27 +22,37 @@ export const DEFAULT_PREFERENCES: UserProfile["preferences"] = {
   learning: { goals: [], pace: "standard", groupOrPrivate: "both" },
 };
 
-export function mapProfileToUser(profile: ProfileRow, authUser: AuthUser): UserProfile {
-  const storedPrefs = profile.preferences as UserProfile["preferences"] | null;
+// full_name "Ana García" → firstName: "Ana", lastName: "García"
+function splitFullName(fullName: string): { firstName: string; lastName: string } {
+  const trimmed = fullName.trim();
+  const idx = trimmed.indexOf(" ");
+  if (idx === -1) return { firstName: trimmed, lastName: "" };
+  return { firstName: trimmed.slice(0, idx), lastName: trimmed.slice(idx + 1) };
+}
+
+export function mapUserToProfile(row: UserRow, authUser: AuthUser): UserProfile {
+  const { firstName, lastName } = splitFullName(row.full_name);
 
   return {
-    id: profile.id,
-    firstName: profile.first_name,
-    lastName: profile.last_name,
-    email: authUser.email ?? "",
-    phone: profile.phone ?? undefined,
-    avatarUrl: profile.avatar_url ?? undefined,
-    role: profile.role,
-    city: profile.city ?? "",
-    country: profile.country ?? "Colombia",
-    timezone: profile.timezone ?? "America/Bogota",
-    bio: profile.bio ?? undefined,
-    languages: (profile.languages as Language[]) ?? [],
-    isActive: profile.is_active,
-    googleCalendarConnected: profile.google_calendar_connected,
-    googleCalendarEmail: profile.google_calendar_email ?? undefined,
-    joinedAt: profile.created_at,
+    id: row.id,
+    firstName,
+    lastName,
+    email: row.email,
+    phone: row.phone ?? undefined,
+    avatarUrl: row.avatar_url ?? undefined,
+    role: row.role as UserProfile["role"],
+    city: "",
+    country: "",
+    timezone: "America/Argentina/Buenos_Aires",
+    bio: undefined,
+    languages: [],
+    isActive: true,
+    googleCalendarConnected: false,
+    joinedAt: row.created_at,
     isEmailVerified: authUser.email_confirmed_at != null,
-    preferences: storedPrefs ?? DEFAULT_PREFERENCES,
+    preferences: DEFAULT_PREFERENCES,
   };
 }
+
+// Mantener alias por compatibilidad con código existente
+export const mapProfileToUser = mapUserToProfile;

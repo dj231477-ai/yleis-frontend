@@ -10,5 +10,6 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(`${origin}/dashboard/profile`);
+  // Hub de rol decide el destino final según el role del usuario
+  return NextResponse.redirect(`${origin}/app`);
 }

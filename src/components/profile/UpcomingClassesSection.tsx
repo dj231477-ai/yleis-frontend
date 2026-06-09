@@ -1,9 +1,9 @@
-import { CalendarDays, Clock, Video, Users, ExternalLink } from "lucide-react";
 import { SectionCard } from "@/components/shared/SectionCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateRelative } from "@/lib/utils";
 import type { UpcomingClass } from "@/types/booking.types";
+import { CalendarDays, Clock, ExternalLink, Users, Video } from "lucide-react";
 import Image from "next/image";
 
 type Props = {
@@ -26,7 +26,9 @@ export function UpcomingClassesSection({ classes }: Props) {
         <div className="py-8 text-center">
           <CalendarDays className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-2 text-sm text-muted-foreground">No tienes clases programadas</p>
-          <Button size="sm" className="mt-4">Reservar clase</Button>
+          <Button size="sm" className="mt-4">
+            Reservar clase
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -49,7 +51,14 @@ function ClassCard({ cls }: { cls: UpcomingClass }) {
       {/* Teacher avatar */}
       <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted">
         {cls.teacherAvatar ? (
-          <Image src={cls.teacherAvatar} alt={cls.teacherName} width={40} height={40} unoptimized className="h-full w-full object-cover" />
+          <Image
+            src={cls.teacherAvatar}
+            alt={cls.teacherName}
+            width={40}
+            height={40}
+            unoptimized
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs font-bold text-muted-foreground">
             {cls.teacherName.charAt(0)}
@@ -75,7 +84,15 @@ function ClassCard({ cls }: { cls: UpcomingClass }) {
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <CalendarDays className="h-3 w-3" />
-            <span className={isToday ? "font-semibold text-primary" : isTomorrow ? "font-medium text-foreground" : ""}>
+            <span
+              className={
+                isToday
+                  ? "font-semibold text-primary"
+                  : isTomorrow
+                    ? "font-medium text-foreground"
+                    : ""
+              }
+            >
               {dateLabel}
             </span>
           </span>
@@ -84,8 +101,14 @@ function ClassCard({ cls }: { cls: UpcomingClass }) {
             {cls.startTime} – {cls.endTime}
           </span>
           <span className="flex items-center gap-1">
-            {cls.sessionType === "group" ? <Users className="h-3 w-3" /> : <Video className="h-3 w-3" />}
-            {cls.sessionType === "group" ? `Grupal · ${cls.participantsCount}/${cls.maxParticipants}` : "Privada"}
+            {cls.sessionType === "group" ? (
+              <Users className="h-3 w-3" />
+            ) : (
+              <Video className="h-3 w-3" />
+            )}
+            {cls.sessionType === "group"
+              ? `Grupal · ${cls.participantsCount}/${cls.maxParticipants}`
+              : "Privada"}
           </span>
         </div>
       </div>

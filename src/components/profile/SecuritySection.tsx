@@ -1,28 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { Shield, Eye, EyeOff, Loader2, Check, AlertTriangle } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { changePasswordSchema, type ChangePasswordFormValues } from "@/lib/validations/profile";
+import { type ChangePasswordFormValues, changePasswordSchema } from "@/lib/validations/profile";
 import { profileService } from "@/services/profile.service";
 import type { UserProfile } from "@/types/user.types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AlertTriangle, Check, Eye, EyeOff, Loader2, Shield } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 
 type Props = { user: UserProfile };
 
-function PasswordInput({ id, label, error, ...props }: { id: string; label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+function PasswordInput({
+  id,
+  label,
+  error,
+  ...props
+}: { id: string; label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   const [show, setShow] = useState(false);
   return (
     <div className="space-y-1.5">
       <Label htmlFor={id}>{label}</Label>
       <div className="relative">
         <Input id={id} type={show ? "text" : "password"} className="pr-10" {...props} />
-        <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+        <button
+          type="button"
+          onClick={() => setShow(!show)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
           {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
       </div>
@@ -122,12 +131,30 @@ export function SecuritySection({ user }: Props) {
               />
 
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => { setIsChanging(false); form.reset(); setServerError(""); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setIsChanging(false);
+                    form.reset();
+                    setServerError("");
+                  }}
+                >
                   Cancelar
                 </Button>
                 <Button type="submit" size="sm" disabled={isSaving}>
-                  {isSaving ? <><Loader2 className="h-4 w-4 animate-spin" /> Guardando...</> :
-                   success ? <><Check className="h-4 w-4" /> Actualizada</> : "Actualizar contraseña"}
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Guardando...
+                    </>
+                  ) : success ? (
+                    <>
+                      <Check className="h-4 w-4" /> Actualizada
+                    </>
+                  ) : (
+                    "Actualizar contraseña"
+                  )}
                 </Button>
               </div>
             </form>

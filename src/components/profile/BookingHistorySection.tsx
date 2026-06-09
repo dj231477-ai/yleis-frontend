@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { BookOpen, Clock, Users, Video } from "lucide-react";
-import Image from "next/image";
 import { SectionCard } from "@/components/shared/SectionCard";
+import { StarRating } from "@/components/shared/StarRating";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { StarRating } from "@/components/shared/StarRating";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import type { Booking, BookingStatus } from "@/types/booking.types";
+import { BookOpen, Clock, Users, Video } from "lucide-react";
+import Image from "next/image";
+import { useState } from "react";
 
 const STATUS_CONFIG: Record<BookingStatus, { label: string; variant: BadgeProps["variant"] }> = {
   confirmed: { label: "Confirmada", variant: "info" },
@@ -63,7 +63,14 @@ function BookingRow({ booking }: { booking: Booking }) {
     <div className="flex items-start gap-4 rounded-lg border border-border bg-background p-4">
       <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
         {booking.teacherAvatar ? (
-          <Image src={booking.teacherAvatar} alt={booking.teacherName} width={36} height={36} unoptimized className="h-full w-full object-cover" />
+          <Image
+            src={booking.teacherAvatar}
+            alt={booking.teacherName}
+            width={36}
+            height={36}
+            unoptimized
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-muted-foreground">
             {booking.teacherName.charAt(0)}
@@ -77,19 +84,29 @@ function BookingRow({ booking }: { booking: Booking }) {
             <p className="text-sm font-medium text-foreground">{booking.subject}</p>
             <p className="text-xs text-muted-foreground">{booking.teacherName}</p>
           </div>
-          <Badge variant={variant} className="shrink-0 text-[10px]">{label}</Badge>
+          <Badge variant={variant} className="shrink-0 text-[10px]">
+            {label}
+          </Badge>
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          <span>{formatDate(booking.date)} · {booking.startTime}</span>
+          <span>
+            {formatDate(booking.date)} · {booking.startTime}
+          </span>
           <span className="flex items-center gap-1">
             <Clock className="h-3 w-3" /> {booking.duration} min
           </span>
           <span className="flex items-center gap-1">
-            {booking.sessionType === "group" ? <Users className="h-3 w-3" /> : <Video className="h-3 w-3" />}
+            {booking.sessionType === "group" ? (
+              <Users className="h-3 w-3" />
+            ) : (
+              <Video className="h-3 w-3" />
+            )}
             {booking.sessionType === "group" ? "Grupal" : "Privada"}
           </span>
-          <span className="font-medium text-foreground">{formatCurrency(booking.price, booking.currency)}</span>
+          <span className="font-medium text-foreground">
+            {formatCurrency(booking.price, booking.currency)}
+          </span>
         </div>
 
         {booking.rating && (

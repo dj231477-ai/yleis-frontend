@@ -9,19 +9,25 @@
       "recommended": true,
       "correctness": {
         "noUnusedVariables": "warn",
-        "noUnusedImports": "warn"
+        "noUnusedImports": "warn",
+        "useExhaustiveDependencies": "warn"
       },
       "suspicious": {
         "noExplicitAny": "warn",
-        "noConsoleLog": "warn"
+        "noConsoleLog": "warn",
+        "noImplicitAnyLet": "warn",
+        "noRedeclare": "warn",
+        "noArrayIndexKey": "warn"
       },
       "style": {
         "noNonNullAssertion": "warn",
-        "useConst": "error"
+        "useConst": "error",
+        "useTemplate": "warn"
       },
       "a11y": {
         "useAltText": "error",
-        "useKeyWithClickEvents": "warn"
+        "useKeyWithClickEvents": "warn",
+        "noLabelWithoutControl": "warn"
       }
     }
   },
@@ -39,6 +45,13 @@
     }
   },
   "files": {
-    "ignore": ["node_modules", ".next", "out", "*.config.ts", "*.config.mjs"]
+    "ignore": [
+      "node_modules",
+      ".next",
+      "out",
+      "*.config.ts",
+      "*.config.mjs",
+      "src/components/ui/ui/**"
+    ]
   }
 }
