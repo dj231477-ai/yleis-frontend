@@ -1,5 +1,4 @@
-import { Sidebar } from "@/components/layout/Sidebar";
-import { mapUserToProfile } from "@/lib/supabase/mappers";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -11,7 +10,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!authUser) redirect("/login");
 
   const { data: row } = await supabase.from("users").select("*").eq("id", authUser.id).single();
-
   if (!row) redirect("/api/auth/signout");
 
   const { data: teacher } = await supabase
@@ -23,8 +21,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const isVerifiedTeacher = teacher?.onboarding_step === "verified";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar user={mapUserToProfile(row, authUser)} isVerifiedTeacher={isVerifiedTeacher} />
+    <div className="flex h-screen overflow-hidden bg-default-background">
+      <AppSidebar
+        user={{
+          id: row.id,
+          full_name: row.full_name,
+          email: row.email ?? authUser.email ?? "",
+          avatar_url: row.avatar_url ?? null,
+          role: row.role ?? "student",
+        }}
+        isVerifiedTeacher={isVerifiedTeacher}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
