@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ??
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://yleis.com");
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://yleis.co");
 
     const preference = {
       items: [
