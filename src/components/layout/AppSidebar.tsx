@@ -82,7 +82,6 @@ export function AppSidebar({ user, isVerifiedTeacher }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
-  const [switching, setSwitching] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   const navItems = user.role === "teacher" ? TEACHER_NAV : STUDENT_NAV;
@@ -97,14 +96,16 @@ export function AppSidebar({ user, isVerifiedTeacher }: AppSidebarProps) {
   }
 
   async function handleRoleSwitch(value: string) {
-    if (switching) return;
     const newRole = value === "profesor" ? "teacher" : "student";
     if (newRole === user.role) return;
-    setSwitching(true);
-    const supabase = createClient();
-    await supabase.from("users").update({ role: newRole }).eq("id", user.id);
-    router.push(newRole === "teacher" ? "/app/teacher/dashboard" : "/app/student/dashboard");
-    router.refresh();
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("users").update({ role: newRole }).eq("id", user.id);
+      if (error) throw error;
+      router.push(newRole === "teacher" ? "/app/teacher/dashboard" : "/app/student/dashboard");
+    } catch {
+      // silencioso — el pathname no cambia, el toggle queda en su posición original
+    }
   }
 
   function isActive(href: string): boolean {
@@ -223,16 +224,16 @@ export function AppSidebar({ user, isVerifiedTeacher }: AppSidebarProps) {
           {isVerifiedTeacher ? (
             <ToggleGroup
               className="h-auto w-full flex-none"
-              value={user.role === "teacher" ? "profesor" : "estudiante"}
+              value={pathname.includes("/teacher/") ? "profesor" : "estudiante"}
               onValueChange={(value: string) => {
                 void handleRoleSwitch(value);
               }}
             >
               <ToggleGroup.Item icon={<FeatherGraduationCap />} value="estudiante">
-                {switching ? "..." : "Estudiante"}
+                Estudiante
               </ToggleGroup.Item>
               <ToggleGroup.Item icon={<FeatherBriefcase />} value="profesor">
-                {switching ? "..." : "Profesor"}
+                Profesor
               </ToggleGroup.Item>
             </ToggleGroup>
           ) : (
