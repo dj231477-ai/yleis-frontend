@@ -92,7 +92,25 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
       return;
     }
 
-    router.push(`/app/student/booking/confirmation?id=${bookingId}`);
+    // Crear preferencia de pago en Mercado Pago
+    const prefRes = await fetch("/api/payments/create-preference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId }),
+    });
+
+    if (!prefRes.ok) {
+      const { error: prefError } = (await prefRes.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      setError(prefError ?? "No se pudo iniciar el pago. Intenta de nuevo.");
+      setLoading(false);
+      return;
+    }
+
+    const { init_point } = (await prefRes.json()) as { init_point: string };
+    // Mercado Pago Checkout Pro vive en un dominio externo
+    window.location.href = init_point;
   }
 
   // Agrupar materias por categoría
@@ -200,7 +218,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
           <span className="text-lg font-bold text-brand-700">{formatARS(price)}</span>
         </div>
         <p className="mt-1 text-xs text-neutral-500">
-          Pago manual · {teacherName} confirmará la clase al recibir el pago
+          Pago seguro vía Mercado Pago · {teacherName} confirma al acreditarse
         </p>
       </div>
 
@@ -217,7 +235,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
         type="submit"
         className="w-full"
       >
-        Enviar solicitud de reserva
+        Confirmar y pagar
       </Button>
     </form>
   );
