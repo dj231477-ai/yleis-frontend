@@ -6,10 +6,67 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/components/ui/ui/**/*.{tsx,ts,js,jsx}"
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "sans-serif"],
+      },
       colors: {
+        // ── Yleis brand tokens ────────────────────────────────────
+        brand: {
+          50: "#fdf2f4",
+          100: "#fce7eb",
+          200: "#f8d0d8",
+          300: "#f2a8b8",
+          400: "#e97590",
+          500: "#dc4f6c",
+          600: "#c73157",
+          700: "#a1213f",  // ← primary DEFAULT light (~350 72% 40%)
+          800: "#881e38",
+          900: "#751d34",
+          950: "#420b19",
+          DEFAULT: "#a1213f",
+        },
+        // ── Semánticos ────────────────────────────────────────────
+        success: {
+          50: "#f0fdf4",
+          500: "#22c55e",
+          600: "#16a34a",
+          700: "#15803d",
+          DEFAULT: "#16a34a",
+          foreground: "#f0fdf4",
+        },
+        warning: {
+          50: "#fffbeb",
+          500: "#f59e0b",
+          600: "#d97706",
+          DEFAULT: "#d97706",
+          foreground: "#fffbeb",
+        },
+        error: {
+          50: "#fef2f2",
+          500: "#ef4444",
+          600: "#dc2626",
+          DEFAULT: "#dc2626",
+          foreground: "#fef2f2",
+        },
+        // ── Neutrales ─────────────────────────────────────────────
+        neutral: {
+          50: "#f8fafc",
+          100: "#f1f5f9",
+          200: "#e2e8f0",
+          300: "#cbd5e1",
+          400: "#94a3b8",
+          500: "#64748b",
+          600: "#475569",
+          700: "#334155",
+          800: "#1e293b",
+          900: "#0f172a",
+          950: "#020617",
+        },
+        // ── shadcn CSS variable tokens (no tocar) ─────────────────
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -66,6 +123,7 @@ const config: Config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
+  presets: [require("./src\\components\\ui\\ui/tailwind.config.js")]
 };
 
 export default config;

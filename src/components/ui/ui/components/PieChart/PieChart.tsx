@@ -22,12 +22,12 @@ const PieChartRoot = React.forwardRef<
       className={SubframeUtils.twClassNames("h-52 w-52", className)}
       ref={ref}
       colors={[
-        "#3b82f6",
-        "#bfdbfe",
-        "#2563eb",
-        "#93c5fd",
-        "#1d4ed8",
-        "#60a5fa",
+        "#dc4f6c",
+        "#f8d0d8",
+        "#c73157",
+        "#f2a8b8",
+        "#a1213f",
+        "#e97590",
       ]}
       {...otherProps}
     />

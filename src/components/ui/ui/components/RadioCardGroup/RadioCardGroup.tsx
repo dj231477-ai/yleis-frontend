@@ -11,7 +11,6 @@ import * as SubframeUtils from "../../utils";
 export interface RadioCardProps
   extends React.ComponentProps<typeof SubframeCore.RadioGroup.Item> {
   disabled?: boolean;
-  checked?: boolean;
   hideRadio?: boolean;
   children?: React.ReactNode;
   className?: string;
@@ -21,7 +20,6 @@ const RadioCard = React.forwardRef<HTMLButtonElement, RadioCardProps>(
   function RadioCard(
     {
       disabled = false,
-      checked = false,
       hideRadio = false,
       children,
       className,
@@ -31,7 +29,6 @@ const RadioCard = React.forwardRef<HTMLButtonElement, RadioCardProps>(
   ) {
     return (
       <SubframeCore.RadioGroup.Item
-        checked={checked}
         disabled={disabled}
         asChild={true}
         {...otherProps}

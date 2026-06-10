@@ -11,16 +11,16 @@ import * as SubframeUtils from "../../utils";
 export interface InputProps
   extends Omit<
     React.TextareaHTMLAttributes<HTMLTextAreaElement>,
-    "placeholder"
+    "placeholder" | "value"
   > {
   placeholder?: React.ReactNode;
-  value?: string;
+  value?: React.ReactNode;
   onChange?: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
   className?: string;
 }
 
 const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(function Input(
-  { placeholder, className, ...otherProps }: InputProps,
+  { placeholder, value, className, ...otherProps }: InputProps,
   ref
 ) {
   return (
@@ -30,6 +30,7 @@ const Input = React.forwardRef<HTMLTextAreaElement, InputProps>(function Input(
         className
       )}
       placeholder={placeholder as string}
+      value={value as string}
       ref={ref}
       {...otherProps}
     />

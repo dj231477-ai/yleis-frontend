@@ -11,17 +11,17 @@ import * as SubframeUtils from "../../utils";
 export interface InputProps
   extends Omit<
     React.InputHTMLAttributes<HTMLInputElement>,
-    "type" | "placeholder"
+    "type" | "placeholder" | "value"
   > {
   type?: "text" | "password" | "email" | "number" | "tel" | "url" | "search";
   placeholder?: React.ReactNode;
-  value?: string;
+  value?: React.ReactNode;
   onChange?: (event: React.ChangeEvent<HTMLInputElement>) => void;
   className?: string;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
-  { type = "text", placeholder, className, ...otherProps }: InputProps,
+  { type = "text", placeholder, value, className, ...otherProps }: InputProps,
   ref
 ) {
   return (
@@ -31,6 +31,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
         className
       )}
       placeholder={placeholder as string}
+      value={value as string}
       ref={ref}
       type={
         type === "search"

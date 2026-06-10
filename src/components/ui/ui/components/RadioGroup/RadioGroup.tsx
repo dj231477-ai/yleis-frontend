@@ -12,23 +12,15 @@ export interface OptionProps
   extends React.ComponentProps<typeof SubframeCore.RadioGroup.Item> {
   label?: React.ReactNode;
   disabled?: boolean;
-  checked?: boolean;
   className?: string;
 }
 
 const Option = React.forwardRef<HTMLButtonElement, OptionProps>(function Option(
-  {
-    label,
-    disabled = false,
-    checked = false,
-    className,
-    ...otherProps
-  }: OptionProps,
+  { label, disabled = false, className, ...otherProps }: OptionProps,
   ref
 ) {
   return (
     <SubframeCore.RadioGroup.Item
-      checked={checked}
       disabled={disabled}
       asChild={true}
       {...otherProps}
