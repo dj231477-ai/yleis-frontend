@@ -14,6 +14,7 @@ import {
   FeatherHome,
   FeatherLogOut,
   FeatherMessageSquare,
+  FeatherPackage,
   FeatherPanelLeftClose,
   FeatherSearch,
   FeatherSettings,
@@ -38,6 +39,7 @@ const STUDENT_NAV: NavItem[] = [
   { label: "Mis Clases", href: "/app/student/classes", icon: FeatherBook },
   { label: "Calendario", href: "/app/calendar", icon: FeatherCalendar },
   { label: "Mensajes", href: "/app/messages", icon: FeatherMessageSquare },
+  { label: "Planes", href: "/app/plans", icon: FeatherPackage },
   { label: "Pagos", href: "/app/payments", icon: FeatherCreditCard },
   { label: "Mi Perfil", href: "/app/profile", icon: FeatherUser },
 ];

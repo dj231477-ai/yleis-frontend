@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { FREE_PLAN_DEFAULTS, getActivePlan } from "@/services/plans";
 import { type BookingRow, getStudentDashboard } from "@/services/students";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
@@ -8,6 +9,7 @@ import {
   FeatherBookOpen,
   FeatherCalendar,
   FeatherCreditCard,
+  FeatherPackage,
   FeatherSearch,
   FeatherUser,
   FeatherVideo,
@@ -184,9 +186,18 @@ export default async function StudentDashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const [dashboardResult, activePlan] = await Promise.allSettled([
+    getStudentDashboard(supabase),
+    getActivePlan(supabase, user.id),
+  ]);
+
+  const plan =
+    activePlan.status === "fulfilled" && activePlan.value ? activePlan.value : FREE_PLAN_DEFAULTS;
+
   let data;
   try {
-    data = await getStudentDashboard(supabase);
+    if (dashboardResult.status === "rejected") throw dashboardResult.reason;
+    data = dashboardResult.value;
   } catch {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
@@ -204,9 +215,29 @@ export default async function StudentDashboardPage() {
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
         {/* Bienvenida */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-neutral-900">Hola, {firstName} 👋</h1>
-          <p className="mt-1 text-sm text-neutral-500">Aquí está tu actividad de aprendizaje</p>
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900">Hola, {firstName} 👋</h1>
+            <p className="mt-1 text-sm text-neutral-500">Aquí está tu actividad de aprendizaje</p>
+          </div>
+          {/* Badge de plan */}
+          <Link href="/app/plans">
+            <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 hover:border-brand-200 hover:shadow-sm transition-all">
+              <FeatherPackage className="text-brand-600" />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-neutral-700">{plan.plan_name}</span>
+                <span className="text-xs text-neutral-400">
+                  {plan.plan_slug === "free"
+                    ? "Express ilimitado"
+                    : `${plan.remaining_classes} clase${plan.remaining_classes !== 1 ? "s" : ""}${
+                        plan.remaining_free_express > 0
+                          ? ` · ${plan.remaining_free_express} Express`
+                          : ""
+                      }`}
+                </span>
+              </div>
+            </div>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
