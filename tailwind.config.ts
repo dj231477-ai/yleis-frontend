@@ -123,7 +123,7 @@ const config: Config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-  presets: [require("./src\\components\\ui\\ui/tailwind.config.js")]
+  presets: [require("./src/components/ui/ui/tailwind.config.js")]
 };
 
 export default config;
