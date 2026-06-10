@@ -3,26 +3,28 @@ import { getBookingConfirmation } from "@/services/bookings";
 import { Avatar } from "@/ui/components/Avatar";
 import { Button } from "@/ui/components/Button";
 import {
+  FeatherAlertCircle,
   FeatherCalendar,
   FeatherCheckCircle,
   FeatherClock,
   FeatherDollarSign,
+  FeatherLoader,
 } from "@subframe/core";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-function formatARS(n: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatCOP(n: number) {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(n);
 }
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -31,7 +33,7 @@ function formatDate(iso: string) {
 }
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" }).format(
+  return new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit" }).format(
     new Date(iso)
   );
 }
@@ -45,11 +47,19 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-type SearchParams = Promise<{ id?: string }>;
+// Acepta tanto ?booking_id= (MP redirect) como ?id= (flujo manual legacy)
+type SearchParams = Promise<{
+  booking_id?: string;
+  id?: string;
+  payment?: "success" | "pending";
+}>;
 
 export default async function ConfirmationPage({ searchParams }: { searchParams: SearchParams }) {
-  const { id } = await searchParams;
-  if (!id) redirect("/app/student/search");
+  const sp = await searchParams;
+  const bookingId = sp.booking_id ?? sp.id;
+  const paymentState = sp.payment ?? "manual";
+
+  if (!bookingId) redirect("/app/student/search");
 
   const supabase = await createClient();
   const {
@@ -57,25 +67,38 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const booking = await getBookingConfirmation(supabase, id, user.id);
+  const booking = await getBookingConfirmation(supabase, bookingId, user.id);
   if (!booking) redirect("/app/student/dashboard");
+
+  const isMP = paymentState === "success" || paymentState === "pending";
+  const isPending = paymentState === "pending";
 
   return (
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-lg px-4 py-12 sm:px-6">
-        {/* Éxito */}
+        {/* Estado principal */}
         <div className="mb-6 flex flex-col items-center text-center">
-          <FeatherCheckCircle className="mb-4 h-16 w-16 text-success" />
-          <h1 className="text-2xl font-bold text-neutral-900">¡Reserva enviada!</h1>
+          {isPending ? (
+            <FeatherLoader className="mb-4 h-16 w-16 text-warning-500" />
+          ) : (
+            <FeatherCheckCircle className="mb-4 h-16 w-16 text-success" />
+          )}
+          <h1 className="text-2xl font-bold text-neutral-900">
+            {isPending ? "Pago en proceso" : "¡Reserva confirmada!"}
+          </h1>
           <p className="mt-2 text-sm text-neutral-500">
-            Tu solicitud fue enviada al profesor. Te confirmarán la clase en cuanto reciban el pago.
+            {isPending
+              ? "Tu pago está siendo procesado. Te avisaremos cuando se confirme."
+              : isMP
+                ? "Tu pago fue recibido. El profesor confirmará la clase en breve."
+                : "Tu solicitud fue enviada. El profesor la confirmará pronto."}
           </p>
         </div>
 
         {/* Resumen de la reserva */}
         <div className="mb-5 rounded-xl border border-neutral-200 bg-white p-5">
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-neutral-400">
-            Resumen de la reserva
+            Resumen
           </h2>
 
           <div className="mb-4 flex items-center gap-3">
@@ -90,52 +113,57 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
 
           <div className="flex flex-col gap-2.5 border-t border-neutral-100 pt-4">
             <div className="flex items-center gap-2.5 text-sm text-neutral-700">
-              <FeatherCalendar className="h-4 w-4 text-neutral-400 shrink-0" />
+              <FeatherCalendar className="h-4 w-4 shrink-0 text-neutral-400" />
               <span className="capitalize">{formatDate(booking.scheduled_at)}</span>
             </div>
             <div className="flex items-center gap-2.5 text-sm text-neutral-700">
-              <FeatherClock className="h-4 w-4 text-neutral-400 shrink-0" />
+              <FeatherClock className="h-4 w-4 shrink-0 text-neutral-400" />
               <span>
-                {formatTime(booking.scheduled_at)} · {booking.duration_min} minutos
+                {formatTime(booking.scheduled_at)} · {booking.duration_min} min
               </span>
             </div>
             <div className="flex items-center gap-2.5 text-sm text-neutral-700">
-              <FeatherDollarSign className="h-4 w-4 text-neutral-400 shrink-0" />
-              <span className="font-semibold text-brand-700">{formatARS(booking.price)}</span>
+              <FeatherDollarSign className="h-4 w-4 shrink-0 text-neutral-400" />
+              <span className="font-semibold text-brand-700">{formatCOP(booking.price)}</span>
             </div>
           </div>
 
           {booking.notes && (
-            <div className="mt-3 rounded-lg bg-neutral-50 p-3 border-t border-neutral-100">
-              <p className="text-xs text-neutral-500 font-medium mb-1">Notas enviadas</p>
+            <div className="mt-3 rounded-lg border-t border-neutral-100 bg-neutral-50 p-3">
+              <p className="mb-1 text-xs font-medium text-neutral-500">Notas enviadas</p>
               <p className="text-sm text-neutral-600">{booking.notes}</p>
             </div>
           )}
         </div>
 
-        {/* Instrucciones de pago */}
-        <div className="mb-6 rounded-xl border border-warning-200 bg-warning-50 p-5">
-          <p className="mb-2 text-sm font-semibold text-warning-800">Instrucciones de pago</p>
-          <p className="text-sm text-warning-700 leading-relaxed">
-            Para confirmar tu clase, realiza el pago de <strong>{formatARS(booking.price)}</strong>{" "}
-            a <strong>{booking.teacher_name}</strong> por cualquiera de estos métodos:
-          </p>
-          <ul className="mt-2 space-y-1 text-sm text-warning-700 list-disc list-inside">
-            <li>Transferencia bancaria / CBU</li>
-            <li>Mercado Pago</li>
-            <li>Nequi / Daviplata</li>
-          </ul>
-          <p className="mt-3 text-xs text-warning-600">
-            El profesor confirmará la clase en cuanto reciba la comprobación. Si no confirma en 24
-            horas, tu reserva se cancelará automáticamente.
-          </p>
-        </div>
+        {/* Banner pago manual (flujo sin MP) */}
+        {!isMP && (
+          <div className="mb-6 rounded-xl border border-warning-200 bg-warning-50 p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <FeatherAlertCircle className="h-4 w-4 text-warning-700" />
+              <p className="text-sm font-semibold text-warning-800">Completa tu pago</p>
+            </div>
+            <p className="text-sm leading-relaxed text-warning-700">
+              Transfiere <strong>{formatCOP(booking.price)}</strong> a{" "}
+              <strong>{booking.teacher_name}</strong> por cualquiera de estos medios:
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-warning-700">
+              <li>Nequi / Daviplata</li>
+              <li>Transferencia bancaria</li>
+              <li>Mercado Pago</li>
+            </ul>
+            <p className="mt-3 text-xs text-warning-600">
+              El profesor tiene 24 horas para confirmar tras recibir el comprobante. Si no confirma,
+              la reserva se cancela automáticamente.
+            </p>
+          </div>
+        )}
 
         {/* Acciones */}
         <div className="flex flex-col gap-3">
-          <Link href="/app/student/dashboard">
+          <Link href="/app/student/classes">
             <Button variant="brand-primary" size="large" className="w-full">
-              Ver mis reservas
+              Ver mis clases
             </Button>
           </Link>
           <Link href="/app/student/search">

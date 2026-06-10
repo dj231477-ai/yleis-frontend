@@ -341,10 +341,16 @@ export type Database = {
           created_at: string;
           currency: string;
           discount_pct: number | null;
+          express_discount: number;
+          free_express_per_month: number;
           id: string;
           is_active: boolean;
           name: string;
           price: number;
+          reschedules_per_month: number;
+          rollover_classes: number;
+          slug: string | null;
+          sort_order: number;
           updated_at: string;
         };
         Insert: {
@@ -352,10 +358,16 @@ export type Database = {
           created_at?: string;
           currency?: string;
           discount_pct?: number | null;
+          express_discount?: number;
+          free_express_per_month?: number;
           id?: string;
           is_active?: boolean;
           name: string;
           price: number;
+          reschedules_per_month?: number;
+          rollover_classes?: number;
+          slug?: string | null;
+          sort_order?: number;
           updated_at?: string;
         };
         Update: {
@@ -363,10 +375,16 @@ export type Database = {
           created_at?: string;
           currency?: string;
           discount_pct?: number | null;
+          express_discount?: number;
+          free_express_per_month?: number;
           id?: string;
           is_active?: boolean;
           name?: string;
           price?: number;
+          reschedules_per_month?: number;
+          rollover_classes?: number;
+          slug?: string | null;
+          sort_order?: number;
           updated_at?: string;
         };
         Relationships: [];
@@ -376,7 +394,12 @@ export type Database = {
           created_at: string;
           expires_at: string | null;
           id: string;
+          mp_payment_id: string | null;
           plan_id: string;
+          remaining_classes: number;
+          remaining_free_express: number;
+          remaining_reschedules: number;
+          renewed_at: string | null;
           started_at: string | null;
           status: string;
           student_id: string;
@@ -386,7 +409,12 @@ export type Database = {
           created_at?: string;
           expires_at?: string | null;
           id?: string;
+          mp_payment_id?: string | null;
           plan_id: string;
+          remaining_classes?: number;
+          remaining_free_express?: number;
+          remaining_reschedules?: number;
+          renewed_at?: string | null;
           started_at?: string | null;
           status?: string;
           student_id: string;
@@ -396,7 +424,12 @@ export type Database = {
           created_at?: string;
           expires_at?: string | null;
           id?: string;
+          mp_payment_id?: string | null;
           plan_id?: string;
+          remaining_classes?: number;
+          remaining_free_express?: number;
+          remaining_reschedules?: number;
+          renewed_at?: string | null;
           started_at?: string | null;
           status?: string;
           student_id?: string;
@@ -1365,6 +1398,10 @@ export type Database = {
       };
     };
     Functions: {
+      activate_membership: {
+        Args: { p_mp_payment_id: string; p_plan_slug: string };
+        Returns: string;
+      };
       create_notification: {
         Args: {
           p_body: string;
@@ -1374,6 +1411,24 @@ export type Database = {
           p_user_id: string;
         };
         Returns: undefined;
+      };
+      get_active_plan: {
+        Args: { p_user_id: string };
+        Returns: {
+          classes_per_month: number;
+          expires_at: string;
+          express_discount: number;
+          free_express_per_month: number;
+          membership_id: string;
+          plan_name: string;
+          plan_slug: string;
+          price_cop: number;
+          remaining_classes: number;
+          remaining_free_express: number;
+          remaining_reschedules: number;
+          reschedules_per_month: number;
+          rollover_classes: number;
+        }[];
       };
       get_available_slots: {
         Args: { p_date: string; p_duration_min: number; p_teacher_id: string };

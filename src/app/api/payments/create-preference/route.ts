@@ -9,27 +9,25 @@ export async function POST(request: Request) {
     if (!body?.bookingId || typeof body.bookingId !== "string") {
       return NextResponse.json({ error: "bookingId requerido" }, { status: 400 });
     }
-    const { bookingId } = body as { bookingId: string };
+    const { bookingId, isExpress = false } = body as {
+      bookingId: string;
+      isExpress?: boolean;
+    };
 
-    // Auth check via session cookie
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-    // Get booking + validate ownership via RLS (student can only see their own bookings)
+    // Validar ownership via RLS (el estudiante solo ve sus propias reservas)
     const { data: booking } = await supabase
       .from("bookings")
       .select("id, price, status, teacher_id, duration_min")
       .eq("id", bookingId)
       .single();
 
-    if (!booking) {
-      return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
-    }
+    if (!booking) return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 });
     if (booking.status !== "pending") {
       return NextResponse.json(
         { error: "Esta reserva ya fue pagada o cancelada" },
@@ -37,24 +35,39 @@ export async function POST(request: Request) {
       );
     }
 
+    // Calcular descuento Express según el plan activo del estudiante
+    let expressDiscount = 0;
+    if (isExpress) {
+      const { data: planRows } = await supabase.rpc("get_active_plan", {
+        p_user_id: user.id,
+      });
+      if (planRows && planRows.length > 0) {
+        expressDiscount = Number(planRows[0].express_discount ?? 0);
+      }
+    }
+
+    const originalPrice = Number(booking.price);
+    const unitPrice = isExpress ? Math.round(originalPrice * (1 - expressDiscount)) : originalPrice;
+
     const accessToken = process.env.MP_ACCESS_TOKEN;
     if (!accessToken) {
       return NextResponse.json({ error: "Pagos no disponibles en este momento" }, { status: 503 });
     }
 
     const appUrl =
-      (process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL)
-        ? `https://${process.env.VERCEL_URL}`
-        : "https://yleis.com";
+      process.env.NEXT_PUBLIC_APP_URL ??
+      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://yleis.com");
 
     const preference = {
       items: [
         {
           id: bookingId,
-          title: `Clase particular — ${booking.duration_min} min`,
+          title: isExpress
+            ? `Clase Express — ${booking.duration_min} min`
+            : `Clase particular — ${booking.duration_min} min`,
           quantity: 1,
-          unit_price: booking.price,
-          currency_id: "ARS",
+          unit_price: unitPrice,
+          currency_id: "COP",
         },
       ],
       payer: { email: user.email },
@@ -65,7 +78,6 @@ export async function POST(request: Request) {
       },
       auto_approve: false,
       external_reference: bookingId,
-      // MP llama directamente al Edge Function — evita un salto extra
       notification_url: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/mp-webhook`,
       statement_descriptor: "Yleis",
       expires: true,
@@ -89,12 +101,10 @@ export async function POST(request: Request) {
     }
 
     const mpData = (await mpRes.json()) as { init_point: string; sandbox_init_point: string };
-
-    // En producción usa init_point; en sandbox usa sandbox_init_point
     const initPoint =
       process.env.NODE_ENV === "production" ? mpData.init_point : mpData.sandbox_init_point;
 
-    return NextResponse.json({ init_point: initPoint });
+    return NextResponse.json({ init_point: initPoint, discount_applied: expressDiscount });
   } catch (e) {
     console.error("[create-preference]", e);
     return NextResponse.json({ error: "Error interno" }, { status: 500 });

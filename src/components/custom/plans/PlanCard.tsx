@@ -4,6 +4,7 @@ import type { Plan } from "@/services/plans";
 import { Badge } from "@/ui/components/Badge";
 import { Button } from "@/ui/components/Button";
 import { FeatherCheck, FeatherStar, FeatherZap } from "@subframe/core";
+import { useState } from "react";
 
 type Props = {
   plan: Plan;
@@ -56,6 +57,30 @@ export function PlanCard({ plan, isCurrent }: Props) {
   const features = PLAN_FEATURES[plan.slug] ?? [];
   const isPopular = plan.slug === "standard";
   const isPremium = plan.slug === "premium";
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleActivate() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/payments/create-plan-preference", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planSlug: plan.slug }),
+      });
+      const data = (await res.json()) as { init_point?: string; error?: string };
+      if (!res.ok || !data.init_point) {
+        setError(data.error ?? "No se pudo iniciar el pago. Intenta de nuevo.");
+        setLoading(false);
+        return;
+      }
+      window.location.href = data.init_point;
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+      setLoading(false);
+    }
+  }
 
   return (
     <div
@@ -108,7 +133,12 @@ export function PlanCard({ plan, isCurrent }: Props) {
       </ul>
 
       {/* CTA */}
-      <div className="mt-auto">
+      <div className="mt-auto flex flex-col gap-2">
+        {error && (
+          <p className="rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-center text-xs text-error-700">
+            {error}
+          </p>
+        )}
         {isCurrent ? (
           <Button variant="neutral-secondary" size="medium" className="w-full" disabled>
             Plan activo
@@ -122,10 +152,8 @@ export function PlanCard({ plan, isCurrent }: Props) {
             variant={isPopular ? "brand-primary" : "brand-secondary"}
             size="medium"
             className="w-full"
-            onClick={() => {
-              // TODO: conectar con MP Checkout cuando pagos estén activos
-              alert(`Próximamente: activar plan ${plan.name}`);
-            }}
+            loading={loading}
+            onClick={handleActivate}
           >
             {isPremium ? "Activar Premium" : `Activar ${plan.name}`}
           </Button>

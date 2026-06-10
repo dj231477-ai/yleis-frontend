@@ -3,7 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getActivePlan, getAllPlans } from "@/services/plans";
 import { redirect } from "next/navigation";
 
-export default async function PlansPage() {
+export const dynamic = "force-dynamic";
+
+type SearchParams = Promise<{
+  activated?: string;
+  payment?: string;
+}>;
+
+export default async function PlansPage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -26,6 +34,29 @@ export default async function PlansPage() {
           Elige el plan que mejor se adapte a tu ritmo de aprendizaje.
         </p>
       </div>
+
+      {/* Feedback de pago */}
+      {sp.activated === "1" && (
+        <div className="flex w-full items-center gap-3 rounded-xl border border-success-200 bg-success-50 px-4 py-3">
+          <span className="text-body-bold font-body-bold text-success-700">
+            ¡Plan activado con éxito! Tus clases ya están disponibles.
+          </span>
+        </div>
+      )}
+      {sp.payment === "pending" && (
+        <div className="flex w-full items-center gap-3 rounded-xl border border-warning-200 bg-warning-50 px-4 py-3">
+          <span className="text-body font-body text-warning-700">
+            Tu pago está en proceso. Recibirás una notificación cuando se confirme.
+          </span>
+        </div>
+      )}
+      {(sp.payment === "failed" || sp.payment === "error") && (
+        <div className="flex w-full items-center gap-3 rounded-xl border border-error-200 bg-error-50 px-4 py-3">
+          <span className="text-body font-body text-error-700">
+            El pago no pudo procesarse. Intenta de nuevo o contacta soporte.
+          </span>
+        </div>
+      )}
 
       {/* Plan actual */}
       {activePlan && (

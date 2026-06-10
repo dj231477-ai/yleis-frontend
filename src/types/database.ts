@@ -1,4 +1,4 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -394,6 +394,7 @@ export type Database = {
           created_at: string;
           expires_at: string | null;
           id: string;
+          mp_payment_id: string | null;
           plan_id: string;
           remaining_classes: number;
           remaining_free_express: number;
@@ -408,6 +409,7 @@ export type Database = {
           created_at?: string;
           expires_at?: string | null;
           id?: string;
+          mp_payment_id?: string | null;
           plan_id: string;
           remaining_classes?: number;
           remaining_free_express?: number;
@@ -422,6 +424,7 @@ export type Database = {
           created_at?: string;
           expires_at?: string | null;
           id?: string;
+          mp_payment_id?: string | null;
           plan_id?: string;
           remaining_classes?: number;
           remaining_free_express?: number;
@@ -1395,6 +1398,10 @@ export type Database = {
       };
     };
     Functions: {
+      activate_membership: {
+        Args: { p_mp_payment_id: string; p_plan_slug: string };
+        Returns: string;
+      };
       create_notification: {
         Args: {
           p_body: string;
