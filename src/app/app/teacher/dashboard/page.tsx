@@ -1,4 +1,5 @@
 ﻿import { BookingActions } from "@/components/custom/teacher/BookingActions";
+import { ExpressSection } from "@/components/custom/teacher/ExpressSection";
 import { PLATFORM_FEE } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -10,13 +11,7 @@ import {
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
 import { IconWithBackground } from "@/ui/components/IconWithBackground";
-import {
-  FeatherCalendar,
-  FeatherDollarSign,
-  FeatherToggleLeft,
-  FeatherVideo,
-  FeatherZap,
-} from "@subframe/core";
+import { FeatherCalendar, FeatherDollarSign, FeatherVideo } from "@subframe/core";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Mi Dashboard — Yleis Profesores" };
@@ -239,33 +234,8 @@ export default async function TeacherDashboardPage() {
             </div>
           </div>
 
-          {/* Modo Express — post-MVP */}
-          <div className="rounded-xl border border-neutral-200 bg-white p-5 opacity-60">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <SectionHeader>Modo Express</SectionHeader>
-                <Badge variant="neutral" className="-mt-3">
-                  Próximamente
-                </Badge>
-              </div>
-              <IconWithBackground variant="neutral" size="small" icon={<FeatherZap />} square />
-            </div>
-            <p className="text-sm text-neutral-500 mb-4">
-              Actívate como disponible para recibir solicitudes de clase inmediata.
-            </p>
-            <div className="flex items-center gap-3">
-              <div
-                title="Disponible cuando el modo Express esté habilitado"
-                className="relative inline-flex h-6 w-11 cursor-not-allowed items-center rounded-full bg-neutral-200"
-              >
-                <span className="inline-block h-4 w-4 translate-x-1 rounded-full bg-white shadow transition" />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <FeatherToggleLeft className="h-4 w-4 text-neutral-400" />
-                <span className="text-sm text-neutral-400">Offline</span>
-              </div>
-            </div>
-          </div>
+          {/* Modo Express */}
+          <ExpressSection teacherId={teacher.id} />
         </div>
       </div>
     </div>
