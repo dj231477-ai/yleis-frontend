@@ -30,10 +30,10 @@ function todayMin() {
   return new Date().toISOString().split("T")[0];
 }
 
-function formatARS(amount: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatCOP(amount: number) {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(amount);
 }
@@ -213,9 +213,9 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
       <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-neutral-600">
-            {formatARS(hourlyRate)}/hora × {durationMin / 60}h
+            {formatCOP(hourlyRate)}/hora × {durationMin / 60}h
           </span>
-          <span className="text-lg font-bold text-brand-700">{formatARS(price)}</span>
+          <span className="text-lg font-bold text-brand-700">{formatCOP(price)}</span>
         </div>
         <p className="mt-1 text-xs text-neutral-500">
           Pago seguro vía Mercado Pago · {teacherName} confirma al acreditarse

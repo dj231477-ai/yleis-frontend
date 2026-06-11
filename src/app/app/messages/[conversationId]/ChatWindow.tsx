@@ -1,199 +1,127 @@
-"use client";
+﻿import { createClient } from "@/lib/supabase/server";
+import { getTeacherProfile } from "@/services/teachers";
+import { Avatar } from "@/ui/components/Avatar";
+import { FeatherUser } from "@subframe/core";
+import { redirect } from "next/navigation";
 
-import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
-import type { Message } from "@/services/messages";
-import { FeatherSend } from "@subframe/core";
-import { useEffect, useRef, useState } from "react";
+export const metadata = { title: "Mis Estudiantes — Yleis" };
+export const dynamic = "force-dynamic";
 
-type Props = {
-  conversationId: string;
-  initialMessages: Message[];
-  currentUserId: string;
-  isActive: boolean;
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(iso));
+}
+
+function initials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
+}
+
+type StudentEntry = {
+  student_id: string;
+  full_name: string;
+  avatar_url: string | null;
+  total_classes: number;
+  last_booking: string;
 };
 
-export function ChatWindow({ conversationId, initialMessages, currentUserId, isActive }: Props) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  const [body, setBody] = useState("");
-  const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
+export default async function TeacherStudentsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
 
-  // Subscribe to new messages via Realtime
-  useEffect(() => {
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          const msg = payload.new as Message;
-          setMessages((prev) => {
-            // Avoid duplicates (optimistic update already added it)
-            if (prev.some((m) => m.id === msg.id)) return prev;
-            return [...prev, msg];
-          });
-        }
-      )
-      .subscribe();
+  const { data: userRow } = await supabase.from("users").select("role").eq("id", user.id).single();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-    // supabase instance is stable; only re-subscribe when conversationId changes
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
-  }, [conversationId]);
+  if (userRow?.role !== "teacher") redirect("/app/student/dashboard");
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    // biome-ignore lint/correctness/useExhaustiveDependencies: scroll only on message list change
-  }, [messages]);
+  const teacher = await getTeacherProfile(supabase, user.id);
+  if (!teacher || teacher.onboarding_step !== "verified") redirect("/app/teacher/onboarding");
 
-  // Mark incoming messages as read
-  useEffect(() => {
-    const unread = messages.filter((m) => m.sender_id !== currentUserId && !m.is_read);
-    if (unread.length === 0) return;
-    supabase
-      .from("messages")
-      .update({ is_read: true })
-      .in(
-        "id",
-        unread.map((m) => m.id)
-      )
-      .then(() => {
-        setMessages((prev) =>
-          prev.map((m) => (unread.some((u) => u.id === m.id) ? { ...m, is_read: true } : m))
-        );
+  // biome-ignore lint/suspicious/noExplicitAny: Supabase typed client does not include all tables
+  const { data: raw } = await (supabase as any)
+    .from("bookings")
+    .select("student_id, scheduled_at, status, students(user_id, users(full_name, avatar_url))")
+    .eq("teacher_id", teacher.id)
+    .in("status", ["confirmed", "paid", "completed"])
+    .order("scheduled_at", { ascending: false });
+
+  // Deduplicate students
+  const map = new Map<string, StudentEntry>();
+  for (const b of raw ?? []) {
+    const sid = b.student_id as string;
+    const name = (b.students?.users?.full_name as string) ?? "Estudiante";
+    const avatar = (b.students?.users?.avatar_url as string | null) ?? null;
+    if (!map.has(sid)) {
+      map.set(sid, {
+        student_id: sid,
+        full_name: name,
+        avatar_url: avatar,
+        total_classes: 1,
+        last_booking: b.scheduled_at,
       });
-    // supabase and currentUserId are stable refs; run only when messages change
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentional
-  }, [messages]);
-
-  async function handleSend() {
-    const text = body.trim();
-    if (!text || sending) return;
-
-    setSending(true);
-    setBody("");
-
-    // Optimistic update
-    const optimisticId = `opt-${Date.now()}`;
-    const optimistic: Message = {
-      id: optimisticId,
-      conversation_id: conversationId,
-      sender_id: currentUserId,
-      body: text,
-      is_read: false,
-      created_at: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, optimistic]);
-
-    const { error } = await supabase.from("messages").insert({
-      conversation_id: conversationId,
-      sender_id: currentUserId,
-      body: text,
-    });
-
-    if (error) {
-      // Remove optimistic message on failure
-      setMessages((prev) => prev.filter((m) => m.id !== optimisticId));
-      setBody(text);
-    }
-    setSending(false);
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      map.get(sid)!.total_classes++;
     }
   }
 
-  function formatTime(iso: string) {
-    return new Intl.DateTimeFormat("es-AR", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(new Date(iso));
-  }
+  const students = Array.from(map.values());
+  const totalClasses = students.reduce((s, e) => s + e.total_classes, 0);
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
-      {/* Message list */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.length === 0 && (
-          <p className="text-center text-sm text-neutral-400 py-8">
-            No hay mensajes aún. ¡Sé el primero en escribir!
+    <div className="bg-neutral-50 min-h-full">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900">Mis Estudiantes</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            {students.length} estudiante{students.length !== 1 ? "s" : ""} · {totalClasses} clase
+            {totalClasses !== 1 ? "s" : ""} en total
           </p>
-        )}
-        {messages.map((msg) => {
-          const isOwn = msg.sender_id === currentUserId;
-          return (
-            <div key={msg.id} className={cn("flex", isOwn ? "justify-end" : "justify-start")}>
-              <div
-                className={cn(
-                  "max-w-xs rounded-2xl px-4 py-2.5 text-sm shadow-sm lg:max-w-md",
-                  isOwn
-                    ? "rounded-br-sm bg-brand-600 text-white"
-                    : "rounded-bl-sm bg-white text-neutral-900 border border-neutral-200"
-                )}
-              >
-                <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-                <p
-                  className={cn(
-                    "mt-1 text-right text-[10px]",
-                    isOwn ? "text-brand-200" : "text-neutral-400"
-                  )}
-                >
-                  {formatTime(msg.created_at)}
-                  {isOwn && <span className="ml-1">{msg.is_read ? "✓✓" : "✓"}</span>}
-                </p>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
+        </div>
 
-      {/* Input area */}
-      <div className="border-t border-neutral-200 bg-white px-4 py-3">
-        {isActive ? (
-          <div className="flex items-end gap-2">
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Escribe un mensaje… (Enter para enviar)"
-              rows={1}
-              disabled={sending}
-              className="flex-1 resize-none rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:opacity-50"
-              style={{ maxHeight: "120px", overflowY: "auto" }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = "auto";
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-            />
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={!body.trim() || sending}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <FeatherSend className="h-4 w-4" />
-            </button>
+        {students.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-neutral-300 bg-white p-16 text-center">
+            <FeatherUser className="h-10 w-10 text-neutral-300" />
+            <div>
+              <p className="font-semibold text-neutral-700">Aún no tienes estudiantes</p>
+              <p className="mt-1 text-sm text-neutral-500">
+                Cuando aceptes reservas, aparecerán aquí.
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-            <p className="text-sm text-neutral-400">
-              Esta clase ha finalizado. Los mensajes son de solo lectura.
-            </p>
+          <div className="flex flex-col gap-2">
+            {students.map((s) => (
+              <div
+                key={s.student_id}
+                className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-white p-4 hover:bg-neutral-50 transition-colors"
+              >
+                <Avatar image={s.avatar_url ?? undefined} size="medium" variant="neutral">
+                  {!s.avatar_url ? initials(s.full_name) : undefined}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="truncate font-medium text-neutral-900 text-sm">{s.full_name}</p>
+                  <p className="text-xs text-neutral-400">
+                    Última clase: {formatDate(s.last_booking)}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-semibold text-neutral-700">{s.total_classes}</p>
+                  <p className="text-xs text-neutral-400">
+                    clase{s.total_classes !== 1 ? "s" : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

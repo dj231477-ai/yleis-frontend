@@ -9,10 +9,10 @@ import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-function formatARS(n: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatCOP(n: number) {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(n);
 }
@@ -40,7 +40,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     day: "numeric",
     month: "long",
     year: "numeric",
@@ -119,7 +119,7 @@ export default async function TeacherProfilePage({ params }: { params: PageParam
             <div>
               <p className="text-xs text-neutral-500">Tarifa por hora</p>
               <p className="text-2xl font-bold text-brand-700">
-                {teacher.hourly_rate ? formatARS(teacher.hourly_rate) : "A consultar"}
+                {teacher.hourly_rate ? formatCOP(teacher.hourly_rate) : "A consultar"}
               </p>
             </div>
             <Link href={`/app/student/booking/${teacher.id}`}>
@@ -192,7 +192,7 @@ export default async function TeacherProfilePage({ params }: { params: PageParam
               className="w-full shadow-lg"
             >
               Reservar clase —{" "}
-              {teacher.hourly_rate ? formatARS(teacher.hourly_rate) + "/h" : "A consultar"}
+              {teacher.hourly_rate ? formatCOP(teacher.hourly_rate) + "/h" : "A consultar"}
             </Button>
           </Link>
         </div>

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+﻿import { createClient } from "@/lib/supabase/server";
 import { getTeacherProfile } from "@/services/teachers";
 import { Avatar } from "@/ui/components/Avatar";
 import { FeatherUser } from "@subframe/core";
@@ -8,7 +8,7 @@ export const metadata = { title: "Mis Estudiantes — Yleis" };
 export const dynamic = "force-dynamic";
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     day: "numeric",
     month: "short",
     year: "numeric",

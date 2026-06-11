@@ -11,10 +11,10 @@ import { Suspense } from "react";
 export const metadata = { title: "Buscar profesores — Yleis" };
 export const dynamic = "force-dynamic";
 
-function formatARS(n: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatCOP(n: number) {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(n);
 }
@@ -129,7 +129,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
                     <div className="mt-auto flex items-center justify-between pt-3 border-t border-neutral-100">
                       <StarRating rating={t.rating_avg} total={t.total_reviews} />
                       <span className="text-sm font-semibold text-brand-700">
-                        {t.hourly_rate ? formatARS(t.hourly_rate) + "/h" : "A consultar"}
+                        {t.hourly_rate ? formatCOP(t.hourly_rate) + "/h" : "A consultar"}
                       </span>
                     </div>
                   </div>

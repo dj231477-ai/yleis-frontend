@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+﻿import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
 import { Button } from "@/ui/components/Button";
@@ -10,7 +10,7 @@ export const metadata = { title: "Mis Clases — Yleis" };
 export const dynamic = "force-dynamic";
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -19,7 +19,7 @@ function formatDate(iso: string) {
 }
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" }).format(
+  return new Intl.DateTimeFormat("es-CO", { hour: "2-digit", minute: "2-digit" }).format(
     new Date(iso)
   );
 }
@@ -167,9 +167,9 @@ function ClassRow({
   };
 }) {
   const formatARS = (n: number) =>
-    new Intl.NumberFormat("es-AR", {
+    new Intl.NumberFormat("es-CO", {
       style: "currency",
-      currency: "ARS",
+      currency: "COP",
       maximumFractionDigits: 0,
     }).format(n);
 

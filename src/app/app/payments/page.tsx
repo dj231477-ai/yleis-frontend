@@ -8,16 +8,16 @@ import { redirect } from "next/navigation";
 export const metadata = { title: "Pagos — Yleis" };
 export const dynamic = "force-dynamic";
 
-function formatARS(n: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatCOP(n: number) {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(n);
 }
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -105,7 +105,7 @@ export default async function PaymentsPage() {
       .filter((b: { status: string }) => b.status === "completed")
       .reduce((sum: number, b: { price: number }) => sum + b.price * TEACHER_PAYOUT, 0);
 
-    const currentMonth = new Intl.DateTimeFormat("es-AR", {
+    const currentMonth = new Intl.DateTimeFormat("es-CO", {
       month: "long",
       year: "numeric",
     }).format(new Date());
@@ -182,7 +182,7 @@ function StudentPaymentsView({
           <div className="rounded-xl border border-brand-100 bg-brand-50 p-5 mb-5 flex items-center justify-between">
             <div>
               <p className="text-xs text-neutral-500">Total invertido en clases</p>
-              <p className="text-2xl font-bold text-brand-700">{formatARS(totalSpent)}</p>
+              <p className="text-2xl font-bold text-brand-700">{formatCOP(totalSpent)}</p>
             </div>
             <FeatherDollarSign className="h-8 w-8 text-brand-300" />
           </div>
@@ -221,7 +221,7 @@ function TeacherPaymentsView({
           <div className="grid grid-cols-2 gap-4 mb-5">
             <div className="rounded-xl border border-success-100 bg-success-50 p-5">
               <p className="text-xs text-neutral-500 mb-1">Ganado (clases completadas)</p>
-              <p className="text-2xl font-bold text-success-700">{formatARS(totalEarned)}</p>
+              <p className="text-2xl font-bold text-success-700">{formatCOP(totalEarned)}</p>
               <p className="text-xs text-neutral-400 mt-1">
                 Comisión Yleis ({(PLATFORM_FEE * 100).toFixed(0)}%) ya descontada
               </p>
@@ -272,7 +272,7 @@ function BookingEntry({ booking: b, isTeacher }: { booking: BookingEntry; isTeac
           className={`text-sm font-semibold ${isTeacher ? "text-success-700" : "text-neutral-800"}`}
         >
           {isTeacher ? "+" : ""}
-          {formatARS(earned)}
+          {formatCOP(earned)}
         </p>
         <div className="mt-1">{statusBadge(b.status)}</div>
       </div>

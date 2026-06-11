@@ -1,4 +1,4 @@
-import { BookingActions } from "@/components/custom/teacher/BookingActions";
+﻿import { BookingActions } from "@/components/custom/teacher/BookingActions";
 import { PLATFORM_FEE } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -24,7 +24,7 @@ export const metadata = { title: "Mi Dashboard — Yleis Profesores" };
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -32,16 +32,16 @@ function formatDate(iso: string) {
 }
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));
 }
 
 function formatARS(amount: number) {
-  return new Intl.NumberFormat("es-AR", {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(amount);
 }
@@ -159,7 +159,7 @@ export default async function TeacherDashboardPage() {
   }
 
   const firstName = data.full_name.split(" ")[0];
-  const currentMonth = new Intl.DateTimeFormat("es-AR", { month: "long", year: "numeric" }).format(
+  const currentMonth = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" }).format(
     new Date()
   );
 

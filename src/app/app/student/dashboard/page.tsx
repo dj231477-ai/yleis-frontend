@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+﻿import { createClient } from "@/lib/supabase/server";
 import { FREE_PLAN_DEFAULTS, getActivePlan } from "@/services/plans";
 import { type BookingRow, getStudentDashboard } from "@/services/students";
 import { Avatar } from "@/ui/components/Avatar";
@@ -22,7 +22,7 @@ export const metadata = { title: "Mi Dashboard — Yleis" };
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     weekday: "short",
     day: "numeric",
     month: "short",
@@ -30,7 +30,7 @@ function formatDate(iso: string) {
 }
 
 function formatTime(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(iso));

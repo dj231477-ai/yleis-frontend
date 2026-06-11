@@ -10,17 +10,17 @@ export const metadata = { title: "Mi Perfil — Yleis" };
 export const dynamic = "force-dynamic";
 
 function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("es-AR", {
+  return new Intl.DateTimeFormat("es-CO", {
     day: "numeric",
     month: "long",
     year: "numeric",
   }).format(new Date(iso));
 }
 
-function formatARS(n: number) {
-  return new Intl.NumberFormat("es-AR", {
+function formatCOP(n: number) {
+  return new Intl.NumberFormat("es-CO", {
     style: "currency",
-    currency: "ARS",
+    currency: "COP",
     maximumFractionDigits: 0,
   }).format(n);
 }
@@ -136,7 +136,7 @@ export default async function ProfilePage() {
                 <div className="flex items-center gap-3 rounded-lg bg-brand-50 border border-brand-100 px-4 py-3">
                   <span className="text-xs text-neutral-500">Tarifa por hora</span>
                   <span className="ml-auto text-lg font-bold text-brand-700">
-                    {formatARS(teacher.hourly_rate)}
+                    {formatCOP(teacher.hourly_rate)}
                   </span>
                 </div>
               )}
