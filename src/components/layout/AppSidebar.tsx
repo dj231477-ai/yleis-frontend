@@ -19,6 +19,7 @@ import {
   FeatherSearch,
   FeatherSettings,
   FeatherUser,
+  FeatherZap,
 } from "@subframe/core";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -46,7 +47,7 @@ const STUDENT_NAV: NavItem[] = [
 
 const TEACHER_NAV: NavItem[] = [
   { label: "Dashboard", href: "/app/teacher/dashboard", icon: FeatherHome },
-  { label: "Mis Estudiantes", href: "/app/teacher/students", icon: FeatherGraduationCap },
+  { label: "Solicitudes Express", href: "/app/teacher/express", icon: FeatherZap },
   { label: "Mis Clases", href: "/app/teacher/classes", icon: FeatherBook },
   { label: "Calendario", href: "/app/calendar", icon: FeatherCalendar },
   { label: "Mensajes", href: "/app/messages", icon: FeatherMessageSquare },
