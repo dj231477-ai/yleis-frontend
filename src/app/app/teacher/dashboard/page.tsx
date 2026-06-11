@@ -70,6 +70,7 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function PendingBookingRow({ booking }: { booking: PendingBooking }) {
+  const isPlanBased = booking.status === "pending_teacher";
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-white p-4">
       <div className="flex items-center gap-3">
@@ -80,18 +81,21 @@ function PendingBookingRow({ booking }: { booking: PendingBooking }) {
           <p className="truncate font-medium text-neutral-900 text-sm">{booking.student_name}</p>
           <p className="text-xs text-neutral-500">{booking.subject_name}</p>
         </div>
-        <div className="text-right text-xs text-neutral-500 shrink-0">
-          <p className="font-medium text-neutral-700">{formatARS(booking.price)}</p>
-          <p>{booking.duration_min} min</p>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span className="text-sm font-medium text-neutral-700">{formatARS(booking.price)}</span>
+          <Badge variant={isPlanBased ? "brand" : "neutral"} className="text-[10px]">
+            {isPlanBased ? "Plan" : "Pago directo"}
+          </Badge>
         </div>
       </div>
 
       <div className="flex items-center justify-between">
         <span className="flex items-center gap-1 text-xs text-neutral-500">
           <FeatherCalendar className="h-3.5 w-3.5" />
-          {formatDate(booking.scheduled_at)} · {formatTime(booking.scheduled_at)}
+          {formatDate(booking.scheduled_at)} · {formatTime(booking.scheduled_at)} ·{" "}
+          {booking.duration_min} min
         </span>
-        <BookingActions bookingId={booking.id} />
+        <BookingActions bookingId={booking.id} bookingStatus={booking.status} />
       </div>
     </div>
   );

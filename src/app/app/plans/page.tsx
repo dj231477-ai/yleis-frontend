@@ -1,5 +1,6 @@
 import { PlanCard } from "@/components/custom/plans/PlanCard";
 import { createClient } from "@/lib/supabase/server";
+import type { Plan } from "@/services/plans";
 import { getActivePlan, getAllPlans } from "@/services/plans";
 import { redirect } from "next/navigation";
 
@@ -9,6 +10,34 @@ type SearchParams = Promise<{
   activated?: string;
   payment?: string;
 }>;
+
+// Agrupa los planes en: [{ plan, partner? }]
+// Los pares basico_a/basico_b, estandar_a/b, premium_a/b se muestran como una sola card con toggle
+function groupPlans(plans: Plan[]): Array<{ plan: Plan; partner?: Plan }> {
+  const result: Array<{ plan: Plan; partner?: Plan }> = [];
+  const seen = new Set<string>();
+
+  for (const plan of plans) {
+    if (seen.has(plan.id)) continue;
+    seen.add(plan.id);
+
+    if (plan.slug.endsWith("_a")) {
+      const partnerSlug = plan.slug.replace(/_a$/, "_b");
+      const partner = plans.find((p) => p.slug === partnerSlug);
+      if (partner) {
+        seen.add(partner.id);
+        result.push({ plan, partner });
+        continue;
+      }
+    }
+    // Slug sin par (free, legacy)
+    if (!plan.slug.endsWith("_b")) {
+      result.push({ plan });
+    }
+  }
+
+  return result;
+}
 
 export default async function PlansPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
@@ -24,6 +53,18 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
   ]);
 
   const currentSlug = activePlan?.plan_slug ?? "free";
+  const grouped = groupPlans(plans);
+
+  // Para encontrar cuál grupo contiene el plan activo
+  function isCurrentGroup(plan: Plan, partner?: Plan): boolean {
+    return plan.slug === currentSlug || (!!partner && partner.slug === currentSlug);
+  }
+
+  // El plan del par que es el activo (para inicializar el toggle en el correcto)
+  function currentPlanInGroup(plan: Plan, partner?: Plan): Plan {
+    if (partner?.slug === currentSlug) return partner;
+    return plan;
+  }
 
   return (
     <div className="flex w-full flex-col items-start gap-8 px-6 py-8">
@@ -88,19 +129,30 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
         </div>
       )}
 
+      {/* Nota categorías */}
+      <div className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3">
+        <p className="text-sm text-neutral-600">
+          <strong className="text-neutral-800">Categoría A</strong> — Profesores a $65.000/hora ·{" "}
+          <strong className="text-neutral-800">Categoría B</strong> — Profesores a $80.000/hora.
+          Elige según el nivel y experiencia que buscas.
+        </p>
+      </div>
+
       {/* Grid de planes */}
       <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {plans.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} isCurrent={plan.slug === currentSlug} />
-        ))}
+        {grouped.map(({ plan, partner }) => {
+          const isCurrent = isCurrentGroup(plan, partner);
+          const displayPlan = isCurrent ? currentPlanInGroup(plan, partner) : plan;
+          return (
+            <PlanCard key={plan.id} plan={displayPlan} partner={partner} isCurrent={isCurrent} />
+          );
+        })}
       </div>
 
       {/* Nota al pie */}
       <p className="text-caption font-caption text-neutral-400">
         Los planes se renuevan automáticamente cada 30 días. Las clases no usadas no son
-        reembolsables. Estándar y Premium acumulan hasta{" "}
-        {plans.find((p) => p.slug === "standard")?.rollover_classes ?? 1}/
-        {plans.find((p) => p.slug === "premium")?.rollover_classes ?? 2} clase al renovar.
+        reembolsables. Estándar y Premium acumulan 1–2 clases al renovar (rollover).
       </p>
     </div>
   );

@@ -8,6 +8,7 @@ import { useState } from "react";
 
 type Props = {
   plan: Plan;
+  partner?: Plan;
   isCurrent: boolean;
 };
 
@@ -20,43 +21,55 @@ function formatCOP(amount: number) {
   }).format(amount);
 }
 
+// Tier derivado del slug para obtener features comunes
+function tierFromSlug(slug: string) {
+  if (slug === "free") return "free";
+  if (slug.startsWith("basico")) return "basico";
+  if (slug.startsWith("estandar")) return "estandar";
+  if (slug.startsWith("premium")) return "premium";
+  // Legacy slugs
+  if (slug === "basic") return "basico";
+  if (slug === "standard") return "estandar";
+  return slug;
+}
+
 const PLAN_FEATURES: Record<string, string[]> = {
   free: ["Clases Express ilimitadas", "Acceso al catálogo de profesores", "Perfil de estudiante"],
-  basic: [
-    "3 clases de suscripción/mes",
+  basico: [
+    "5 clases programadas/mes",
+    "5% descuento en precio de suscripción",
     "1 reprogramación/mes",
-    "Clases Express ilimitadas",
     "Chat con el profesor",
   ],
-  standard: [
-    "5 clases de suscripción/mes",
+  estandar: [
+    "8 clases programadas/mes",
+    "8% descuento en suscripción",
     "1 Express gratis/mes",
+    "8% descuento en Express",
     "2 reprogramaciones/mes",
-    "10% descuento en Express",
-    "Prioridad en matching",
     "Acumula 1 clase al renovar",
   ],
   premium: [
-    "8 clases de suscripción/mes",
+    "12 clases programadas/mes",
+    "12% descuento en suscripción",
     "2 Express gratis/mes",
+    "12% descuento en Express",
     "3 reprogramaciones/mes",
-    "15% descuento en Express",
-    "Profesor dedicado",
     "Acumula 2 clases al renovar",
   ],
 };
 
-const PLAN_ACCENT: Record<string, string> = {
-  free: "neutral",
-  basic: "brand",
-  standard: "success",
-  premium: "warning",
-};
+export function PlanCard({ plan, partner, isCurrent }: Props) {
+  // Si hay par A/B, comenzar en la categoría A (plan actual o primero)
+  const [selected, setSelected] = useState<Plan>(isCurrent ? plan : (plan ?? plan));
+  const activePlan = partner ? selected : plan;
 
-export function PlanCard({ plan, isCurrent }: Props) {
-  const features = PLAN_FEATURES[plan.slug] ?? [];
-  const isPopular = plan.slug === "standard";
-  const isPremium = plan.slug === "premium";
+  const tier = tierFromSlug(activePlan.slug);
+  const features = PLAN_FEATURES[tier] ?? [];
+  const isPopular = tier === "estandar";
+  const isPremium = tier === "premium";
+  const hasPair = !!partner;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,7 +80,7 @@ export function PlanCard({ plan, isCurrent }: Props) {
       const res = await fetch("/api/payments/create-plan-preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ planSlug: plan.slug }),
+        body: JSON.stringify({ planSlug: activePlan.slug }),
       });
       const data = (await res.json()) as { init_point?: string; error?: string };
       if (!res.ok || !data.init_point) {
@@ -92,7 +105,7 @@ export function PlanCard({ plan, isCurrent }: Props) {
             : "border-neutral-200 bg-white"
       }`}
     >
-      {/* Badge popular */}
+      {/* Badge popular / activo */}
       {isPopular && !isCurrent && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2">
           <Badge variant="success" icon={<FeatherStar />}>
@@ -110,13 +123,43 @@ export function PlanCard({ plan, isCurrent }: Props) {
       <div className="mb-4 flex flex-col gap-1">
         <div className="flex items-center gap-2">
           {isPremium && <FeatherZap className="text-warning-600" />}
-          <span className="text-heading-3 font-heading-3 text-default-font">{plan.name}</span>
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-heading-2 font-heading-2 text-default-font">
-            {formatCOP(plan.price_cop)}
+          <span className="text-heading-3 font-heading-3 text-default-font">
+            {hasPair
+              ? /* mostrar solo el tier sin la letra */ activePlan.name.replace(/ [AB]$/, "")
+              : activePlan.name}
           </span>
-          {plan.price_cop > 0 && (
+        </div>
+
+        {/* Toggle A/B si hay par */}
+        {hasPair && partner && (
+          <div className="flex gap-1 mt-1">
+            {[plan, partner].map((p) => {
+              const cat = p.slug.endsWith("_a") ? "A" : "B";
+              const catLabel = cat === "A" ? "Cat. A · $65.000/h" : "Cat. B · $80.000/h";
+              const isActive = selected.id === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelected(p)}
+                  className={`flex-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors ${
+                    isActive
+                      ? "border-brand-400 bg-brand-50 text-brand-700"
+                      : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300"
+                  }`}
+                >
+                  {catLabel}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex items-baseline gap-1 mt-1">
+          <span className="text-heading-2 font-heading-2 text-default-font">
+            {formatCOP(activePlan.price_cop)}
+          </span>
+          {activePlan.price_cop > 0 && (
             <span className="text-body font-body text-subtext-color">/mes</span>
           )}
         </div>
@@ -143,7 +186,7 @@ export function PlanCard({ plan, isCurrent }: Props) {
           <Button variant="neutral-secondary" size="medium" className="w-full" disabled>
             Plan activo
           </Button>
-        ) : plan.price_cop === 0 ? (
+        ) : activePlan.price_cop === 0 ? (
           <Button variant="neutral-secondary" size="medium" className="w-full" disabled>
             Plan por defecto
           </Button>
@@ -155,7 +198,7 @@ export function PlanCard({ plan, isCurrent }: Props) {
             loading={loading}
             onClick={handleActivate}
           >
-            {isPremium ? "Activar Premium" : `Activar ${plan.name}`}
+            {isPremium ? "Activar Premium" : `Activar ${activePlan.name.replace(/ [AB]$/, "")}`}
           </Button>
         )}
       </div>

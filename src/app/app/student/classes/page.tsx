@@ -1,8 +1,11 @@
-﻿import { createClient } from "@/lib/supabase/server";
+import { BookingModalTrigger } from "@/components/custom/classes/BookingModalTrigger";
+import { createClient } from "@/lib/supabase/server";
+import { getActivePlan } from "@/services/plans";
+import { getVerifiedTeachers } from "@/services/teachers";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
 import { Button } from "@/ui/components/Button";
-import { FeatherCalendar, FeatherMessageSquare, FeatherSearch } from "@subframe/core";
+import { FeatherCalendar, FeatherClock, FeatherMessageSquare, FeatherSearch } from "@subframe/core";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -38,9 +41,11 @@ function statusBadge(status: string) {
     string,
     { label: string; variant: "brand" | "success" | "warning" | "error" | "neutral" }
   > = {
-    pending: { label: "Pendiente", variant: "warning" },
+    pending_teacher: { label: "Esperando profesor", variant: "warning" },
+    pending: { label: "Pendiente pago", variant: "warning" },
     confirmed: { label: "Confirmada", variant: "brand" },
     paid: { label: "Pagada", variant: "brand" },
+    in_progress: { label: "En curso", variant: "success" },
     completed: { label: "Completada", variant: "success" },
     cancelled_student: { label: "Cancelada", variant: "error" },
     cancelled_teacher: { label: "Cancelada", variant: "error" },
@@ -56,6 +61,18 @@ const BOOKING_SELECT = `
   subjects(name)
 ` as const;
 
+type BookingRow = {
+  id: string;
+  scheduled_at: string;
+  duration_min: number;
+  price: number;
+  status: string;
+  meet_link: string | null;
+  teacher_name: string;
+  teacher_avatar: string | null;
+  subject_name: string;
+};
+
 export default async function StudentClassesPage() {
   const supabase = await createClient();
   const {
@@ -63,14 +80,32 @@ export default async function StudentClassesPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: student } = await supabase
-    .from("students")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const [studentResult, activePlan, teachers, subjectsResult] = await Promise.all([
+    supabase.from("students").select("id").eq("user_id", user.id).single(),
+    getActivePlan(supabase, user.id),
+    getVerifiedTeachers(supabase),
+    // biome-ignore lint/suspicious/noExplicitAny: tabla no tipada
+    (supabase as any)
+      .from("subjects")
+      .select("id, name, category")
+      .order("name"),
+  ]);
+
+  const student = studentResult.data;
+  const subjects: Array<{ id: string; name: string; category: string | null }> =
+    subjectsResult.data ?? [];
+
+  const teacherList = teachers.map((t) => ({
+    id: t.id,
+    full_name: t.full_name,
+    hourly_rate: t.hourly_rate,
+  }));
+
+  const hasActivePlan =
+    activePlan != null && activePlan.plan_slug !== "free" && activePlan.remaining_classes > 0;
 
   if (!student) {
-    return <EmptyState />;
+    return <EmptyState subjects={subjects} teachers={teacherList} hasActivePlan={hasActivePlan} />;
   }
 
   // biome-ignore lint/suspicious/noExplicitAny: Supabase typed client does not include all tables
@@ -81,7 +116,7 @@ export default async function StudentClassesPage() {
     .order("scheduled_at", { ascending: false });
 
   // biome-ignore lint/suspicious/noExplicitAny: Supabase typed client does not include all tables
-  const all = (raw ?? []).map((b: any) => ({
+  const all: BookingRow[] = (raw ?? []).map((b: any) => ({
     id: b.id as string,
     scheduled_at: b.scheduled_at as string,
     duration_min: b.duration_min as number,
@@ -93,23 +128,30 @@ export default async function StudentClassesPage() {
     subject_name: (b.subjects?.name as string) ?? "Clase",
   }));
 
-  const upcoming = all.filter((b: { status: string }) =>
-    ["pending", "confirmed", "paid"].includes(b.status)
-  );
-  const history = all.filter(
-    (b: { status: string }) => !["pending", "confirmed", "paid"].includes(b.status)
-  );
+  const ACTIVE_STATUSES = ["pending_teacher", "pending", "confirmed", "paid", "in_progress"];
+  const upcoming = all.filter((b) => ACTIVE_STATUSES.includes(b.status));
+  const history = all.filter((b) => !ACTIVE_STATUSES.includes(b.status));
 
-  if (all.length === 0) return <EmptyState />;
+  if (all.length === 0) {
+    return <EmptyState subjects={subjects} teachers={teacherList} hasActivePlan={hasActivePlan} />;
+  }
+
+  const activePlanLabel = activePlan
+    ? `${activePlan.plan_name} · ${activePlan.remaining_classes} clase${activePlan.remaining_classes !== 1 ? "s" : ""} disponible${activePlan.remaining_classes !== 1 ? "s" : ""}`
+    : null;
 
   return (
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-neutral-900">Mis Clases</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            {all.length} clase{all.length !== 1 ? "s" : ""} en total
-          </p>
+        {/* Header */}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900">Mis Clases</h1>
+            {activePlanLabel && (
+              <p className="mt-1 text-sm text-brand-600 font-medium">{activePlanLabel}</p>
+            )}
+          </div>
+          {hasActivePlan && <BookingModalTrigger subjects={subjects} teachers={teacherList} />}
         </div>
 
         {/* Stats */}
@@ -117,22 +159,20 @@ export default async function StudentClassesPage() {
           <StatCard label="Activas" value={upcoming.length} color="brand" />
           <StatCard
             label="Completadas"
-            value={history.filter((b: { status: string }) => b.status === "completed").length}
+            value={history.filter((b) => b.status === "completed").length}
             color="success"
           />
           <StatCard
             label="Canceladas"
-            value={
-              history.filter((b: { status: string }) => b.status.startsWith("cancelled")).length
-            }
+            value={history.filter((b) => b.status.startsWith("cancelled")).length}
             color="neutral"
           />
         </div>
 
-        {/* Próximas */}
+        {/* Próximas y activas */}
         {upcoming.length > 0 && (
           <Section title="Próximas y activas">
-            {upcoming.map((b: (typeof all)[0]) => (
+            {upcoming.map((b) => (
               <ClassRow key={b.id} booking={b} />
             ))}
           </Section>
@@ -141,7 +181,7 @@ export default async function StudentClassesPage() {
         {/* Historial */}
         {history.length > 0 && (
           <Section title="Historial">
-            {history.map((b: (typeof all)[0]) => (
+            {history.map((b) => (
               <ClassRow key={b.id} booking={b} />
             ))}
           </Section>
@@ -151,27 +191,15 @@ export default async function StudentClassesPage() {
   );
 }
 
-function ClassRow({
-  booking: b,
-}: {
-  booking: {
-    id: string;
-    scheduled_at: string;
-    duration_min: number;
-    price: number;
-    status: string;
-    meet_link: string | null;
-    teacher_name: string;
-    teacher_avatar: string | null;
-    subject_name: string;
-  };
-}) {
-  const formatARS = (n: number) =>
+function ClassRow({ booking: b }: { booking: BookingRow }) {
+  const formatCOP = (n: number) =>
     new Intl.NumberFormat("es-CO", {
       style: "currency",
       currency: "COP",
       maximumFractionDigits: 0,
     }).format(n);
+
+  const showChat = ["confirmed", "paid", "in_progress"].includes(b.status);
 
   return (
     <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-4 hover:bg-neutral-50 transition-colors">
@@ -187,10 +215,10 @@ function ClassRow({
         </div>
       </div>
       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-        <p className="text-sm font-medium text-neutral-700">{formatARS(b.price)}</p>
+        <p className="text-sm font-medium text-neutral-700">{formatCOP(b.price)}</p>
         <div className="flex items-center gap-1.5">
           {statusBadge(b.status)}
-          {(b.status === "confirmed" || b.status === "paid") && (
+          {showChat && (
             <Link
               href={`/app/messages/booking/${b.id}`}
               title="Abrir mensajes"
@@ -232,22 +260,49 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function EmptyState() {
+function EmptyState({
+  subjects,
+  teachers,
+  hasActivePlan,
+}: {
+  subjects: Array<{ id: string; name: string; category: string | null }>;
+  teachers: Array<{ id: string; full_name: string; hourly_rate: number | null }>;
+  hasActivePlan: boolean;
+}) {
   return (
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
-        <h1 className="text-2xl font-bold text-neutral-900 mb-6">Mis Clases</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900">Mis Clases</h1>
+          {hasActivePlan && <BookingModalTrigger subjects={subjects} teachers={teachers} />}
+        </div>
         <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-neutral-300 bg-white p-16 text-center">
-          <FeatherSearch className="h-10 w-10 text-neutral-300" />
-          <div>
-            <p className="font-semibold text-neutral-700">Aún no tienes clases</p>
-            <p className="mt-1 text-sm text-neutral-500">Reserva tu primera clase para empezar.</p>
-          </div>
-          <Link href="/app/student/search">
-            <Button variant="brand-primary" size="medium">
-              Buscar profesores
-            </Button>
-          </Link>
+          {hasActivePlan ? (
+            <>
+              <FeatherClock className="h-10 w-10 text-neutral-300" />
+              <div>
+                <p className="font-semibold text-neutral-700">Aún no tienes clases</p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Tienes clases disponibles en tu plan. ¡Programa la primera!
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <FeatherSearch className="h-10 w-10 text-neutral-300" />
+              <div>
+                <p className="font-semibold text-neutral-700">Aún no tienes clases</p>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Reserva tu primera clase o activa un plan para programar.
+                </p>
+              </div>
+              <Link href="/app/student/search">
+                <Button variant="brand-primary" size="medium">
+                  Buscar profesores
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -141,6 +141,7 @@ export type PendingBooking = {
   scheduled_at: string;
   duration_min: number;
   price: number;
+  status: string;
   student_name: string;
   student_avatar: string | null;
   subject_name: string;
@@ -199,9 +200,9 @@ export async function getTeacherDashboard(
   const [pendingResult, upcomingResult, completedResult] = await Promise.all([
     supabase
       .from("bookings")
-      .select("id, scheduled_at, duration_min, price, student_id, subject_id")
+      .select("id, scheduled_at, duration_min, price, status, student_id, subject_id")
       .eq("teacher_id", teacher.id)
-      .eq("status", "pending")
+      .in("status", ["pending_teacher", "pending"])
       .order("scheduled_at", { ascending: true }),
     supabase
       .from("bookings")
@@ -262,6 +263,8 @@ export async function getTeacherDashboard(
     scheduled_at: b.scheduled_at,
     duration_min: b.duration_min,
     price: b.price,
+    // biome-ignore lint/suspicious/noExplicitAny: status no está en el tipo tipado
+    status: (b as any).status ?? "pending",
     student_name: studentMap.get(b.student_id)?.full_name ?? "Alumno",
     student_avatar: studentMap.get(b.student_id)?.avatar_url ?? null,
     subject_name: subjectMap.get(b.subject_id) ?? "—",
