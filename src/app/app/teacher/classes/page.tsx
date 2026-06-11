@@ -2,7 +2,7 @@
 import { getTeacherProfile } from "@/services/teachers";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
-import { FeatherCalendar, FeatherMessageSquare } from "@subframe/core";
+import { FeatherCalendar, FeatherExternalLink, FeatherMessageSquare } from "@subframe/core";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -201,14 +201,23 @@ function ClassRow({
         <p className="text-sm font-medium text-neutral-700">{formatARS(b.price)}</p>
         <div className="flex items-center gap-1.5">
           {statusBadge(b.status)}
-          {(b.status === "confirmed" || b.status === "paid") && (
-            <Link
-              href={`/app/messages/booking/${b.id}`}
-              title="Abrir mensajes"
-              className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
-            >
-              <FeatherMessageSquare className="h-3.5 w-3.5" />
-            </Link>
+          {["confirmed", "paid", "in_progress"].includes(b.status) && (
+            <>
+              <Link
+                href={`/app/teacher/classes/${b.id}`}
+                title="Ver detalle"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+              >
+                <FeatherExternalLink className="h-3.5 w-3.5" />
+              </Link>
+              <Link
+                href={`/app/messages/booking/${b.id}`}
+                title="Abrir mensajes"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-400 hover:bg-brand-50 hover:text-brand-600 transition-colors"
+              >
+                <FeatherMessageSquare className="h-3.5 w-3.5" />
+              </Link>
+            </>
           )}
         </div>
       </div>
