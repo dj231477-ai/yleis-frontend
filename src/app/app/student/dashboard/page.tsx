@@ -13,6 +13,7 @@ import {
   FeatherSearch,
   FeatherUser,
   FeatherVideo,
+  FeatherZap,
 } from "@subframe/core";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -158,10 +159,16 @@ function HistoryRow({ booking }: { booking: BookingRow }) {
 
 const QUICK_ACTIONS = [
   {
+    label: "Clase Express",
+    icon: <FeatherZap />,
+    href: "/app/student/express",
+    variant: "brand" as const,
+  },
+  {
     label: "Buscar profesor",
     icon: <FeatherSearch />,
     href: "/app/student/search",
-    variant: "brand" as const,
+    variant: "neutral" as const,
   },
   {
     label: "Mis pagos",

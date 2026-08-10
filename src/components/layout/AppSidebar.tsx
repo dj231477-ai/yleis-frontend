@@ -36,6 +36,7 @@ type NavItem = {
 
 const STUDENT_NAV: NavItem[] = [
   { label: "Dashboard", href: "/app/student/dashboard", icon: FeatherHome },
+  { label: "Clase Express", href: "/app/student/express", icon: FeatherZap },
   { label: "Buscar Profesor", href: "/app/student/search", icon: FeatherSearch },
   { label: "Mis Clases", href: "/app/student/classes", icon: FeatherBook },
   { label: "Calendario", href: "/app/calendar", icon: FeatherCalendar },

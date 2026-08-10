@@ -174,10 +174,10 @@ export default async function TeacherDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          {/* Reservas pendientes */}
+          {/* Solicitudes de clases unitarias o paquetes (distinto de Express) */}
           <div>
             <SectionHeader>
-              Reservas pendientes{" "}
+              Solicitudes de clases (unitarias o paquetes){" "}
               {data.pending_bookings.length > 0 && (
                 <Badge variant="warning" className="ml-1.5 inline-flex">
                   {data.pending_bookings.length}
@@ -191,7 +191,7 @@ export default async function TeacherDashboardPage() {
                 ))}
               </div>
             ) : (
-              <EmptyState message="No tienes reservas pendientes de confirmar" />
+              <EmptyState message="No tienes solicitudes pendientes de confirmar" />
             )}
           </div>
 

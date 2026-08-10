@@ -6,7 +6,7 @@ test.describe("Student Express request", () => {
   test("creating an express request switches to the searching state with a live timer", async ({
     page,
   }) => {
-    await page.goto("/app/student/search");
+    await page.goto("/app/student/express");
 
     await expect(page.getByRole("heading", { name: "Clase Express" })).toBeVisible();
 

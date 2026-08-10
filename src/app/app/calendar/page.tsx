@@ -140,8 +140,6 @@ export default async function CalendarPage() {
     }
   }
 
-  const calcomUrl = process.env.NEXT_PUBLIC_CALCOM_URL;
-
   return (
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
@@ -152,33 +150,30 @@ export default async function CalendarPage() {
               Proximas clases y acceso rapido a tus reuniones.
             </p>
           </div>
-          {calcomUrl && (
-            <a
-              href={calcomUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-            >
-              <FeatherExternalLink className="h-4 w-4" />
-              Abrir Cal.com
-            </a>
-          )}
         </div>
 
-        <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
-              <FeatherCalendar className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-neutral-800">Cal.com</h2>
-              <p className="mt-1 text-sm text-neutral-500">
-                La integracion queda lista para activarse con `NEXT_PUBLIC_CALCOM_URL`. En el MVP,
-                el link de Google Meet se gestiona manualmente en cada clase.
-              </p>
+        {role === "teacher" && (
+          <div className="mb-6 rounded-xl border border-neutral-200 bg-white p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+                <FeatherCalendar className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-semibold text-neutral-800">Google Calendar</h2>
+                <p className="mt-1 text-sm text-neutral-500">
+                  Conecta tu Google Calendar para que el link de Meet se genere solo al confirmar
+                  una clase. Sin conectarlo, seguis pegando el link manualmente.
+                </p>
+              </div>
+              <Link
+                href="/app/profile"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+              >
+                Ir a Mi Perfil
+              </Link>
             </div>
           </div>
-        </div>
+        )}
 
         {bookings.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-white p-12 text-center">
