@@ -81,6 +81,7 @@ export default async function TeacherClassDetailPage({
     .from("bookings")
     .select(`
       id, scheduled_at, duration_min, price, status, meet_link, confirmation_code,
+      recipient_type, recipient_first_name, recipient_last_name, recipient_relationship, recipient_age,
       subjects(name),
       students(users(full_name, avatar_url))
     `)
@@ -162,6 +163,18 @@ export default async function TeacherClassDetailPage({
               </a>
             )}
           </div>
+
+          {booking.recipient_type === "other" && (
+            <div className="mt-3 rounded-lg border-t border-neutral-100 bg-neutral-50 p-3">
+              <p className="mb-1 text-xs font-medium text-neutral-500">
+                Esta clase es para otra persona
+              </p>
+              <p className="text-sm text-neutral-700">
+                {booking.recipient_first_name} {booking.recipient_last_name} ·{" "}
+                {booking.recipient_relationship} · {booking.recipient_age} años
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Start class section — teacher enters code to begin */}

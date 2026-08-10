@@ -128,6 +128,16 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
             </div>
           </div>
 
+          {booking.recipient_type === "other" && (
+            <div className="mt-3 rounded-lg border-t border-neutral-100 bg-neutral-50 p-3">
+              <p className="mb-1 text-xs font-medium text-neutral-500">Clase para</p>
+              <p className="text-sm text-neutral-700">
+                {booking.recipient_first_name} {booking.recipient_last_name} ·{" "}
+                {booking.recipient_relationship} · {booking.recipient_age} años
+              </p>
+            </div>
+          )}
+
           {booking.notes && (
             <div className="mt-3 rounded-lg border-t border-neutral-100 bg-neutral-50 p-3">
               <p className="mb-1 text-xs font-medium text-neutral-500">Notas enviadas</p>

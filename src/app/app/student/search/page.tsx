@@ -66,6 +66,11 @@ export default function SearchPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [nameQuery, setNameQuery] = useState("");
+
+  const filteredTeachers = nameQuery.trim()
+    ? teachers.filter((t) => t.full_name.toLowerCase().includes(nameQuery.trim().toLowerCase()))
+    : teachers;
 
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -322,11 +327,30 @@ export default function SearchPage() {
           )}
         </div>
 
-        {/* ── Catálogo de profesores ───────────────────────────────────────── */}
+        {/* ── Solicitar una clase o paquete ───────────────────────────────── */}
         <div>
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-1 flex items-center gap-2">
             <FeatherSearch className="h-5 w-5 text-neutral-500" />
-            <h2 className="text-lg font-bold text-neutral-900">Catálogo de profesores</h2>
+            <h2 className="text-lg font-bold text-neutral-900">Solicitar una clase o paquete</h2>
+          </div>
+          <p className="mb-4 text-sm text-neutral-500">
+            Elige un profesor y solicítale una clase o paquete. El tiempo de respuesta puede ser de
+            3 hasta 24 horas. Si buscas algo más urgente, usa{" "}
+            <span className="font-medium text-brand-700">Clases y Tutorías Express</span> arriba.
+          </p>
+
+          <div className="mb-4 flex flex-col gap-1.5">
+            <label htmlFor="teacher-name-search" className="text-xs font-medium text-neutral-600">
+              ¿Buscas a un profesor en particular? Busca por nombre
+            </label>
+            <input
+              id="teacher-name-search"
+              type="text"
+              value={nameQuery}
+              onChange={(e) => setNameQuery(e.target.value)}
+              placeholder="Ej: María García"
+              className="w-full max-w-sm rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+            />
           </div>
 
           {catalogLoading ? (
@@ -338,14 +362,18 @@ export default function SearchPage() {
                 />
               ))}
             </div>
-          ) : teachers.length === 0 ? (
+          ) : filteredTeachers.length === 0 ? (
             <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-neutral-300 bg-white p-16 text-center">
               <FeatherSearch className="h-10 w-10 text-neutral-300" />
-              <p className="text-sm text-neutral-500">No hay profesores verificados aún.</p>
+              <p className="text-sm text-neutral-500">
+                {nameQuery.trim()
+                  ? `No encontramos profesores que coincidan con "${nameQuery}".`
+                  : "No hay profesores verificados aún."}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {teachers.map((t) => (
+              {filteredTeachers.map((t) => (
                 <Link key={t.id} href={`/app/student/teacher/${t.id}`} className="group">
                   <div className="flex h-full flex-col rounded-xl border border-neutral-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-md">
                     <div className="flex items-start gap-3 mb-3">

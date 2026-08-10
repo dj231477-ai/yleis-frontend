@@ -1,7 +1,12 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { createBooking } from "@/services/bookings";
+import {
+  type BookingRecipient,
+  RECIPIENT_RELATIONSHIPS,
+  type RecipientRelationship,
+  createBooking,
+} from "@/services/bookings";
 import { Button } from "@/ui/components/Button";
 import { useMemo, useState } from "react";
 
@@ -46,6 +51,15 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ¿Quién recibe la clase?
+  const [recipientType, setRecipientType] = useState<"self" | "other">("self");
+  const [recipientFirstName, setRecipientFirstName] = useState("");
+  const [recipientLastName, setRecipientLastName] = useState("");
+  const [recipientRelationship, setRecipientRelationship] = useState<RecipientRelationship>(
+    RECIPIENT_RELATIONSHIPS[0]
+  );
+  const [recipientAge, setRecipientAge] = useState("");
+
   const price = useMemo(() => hourlyRate * (durationMin / 60), [hourlyRate, durationMin]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -59,6 +73,27 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
     if (!subjectId) {
       setError("Selecciona una materia");
       return;
+    }
+
+    let recipient: BookingRecipient;
+    if (recipientType === "self") {
+      recipient = { type: "self" };
+    } else {
+      if (!recipientFirstName.trim() || !recipientLastName.trim()) {
+        setError("Completa el nombre y apellido de quien recibirá la clase");
+        return;
+      }
+      if (!recipientAge || Number(recipientAge) <= 0) {
+        setError("Ingresa la edad de quien recibirá la clase");
+        return;
+      }
+      recipient = {
+        type: "other",
+        firstName: recipientFirstName.trim(),
+        lastName: recipientLastName.trim(),
+        relationship: recipientRelationship,
+        age: Number(recipientAge),
+      };
     }
 
     // Combinar fecha y hora como datetime local → convertir a UTC
@@ -82,6 +117,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
       durationMin,
       price,
       notes: notes.trim() || undefined,
+      recipient,
     });
 
     if (bookingError) {
@@ -121,6 +157,102 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      {/* ¿Quién recibe la clase? */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-neutral-600">¿Quién recibe la clase?</label>
+        <div className="flex gap-2">
+          {(["self", "other"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setRecipientType(t)}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                recipientType === t
+                  ? "border-brand-400 bg-brand-50 text-brand-700"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+              }`}
+            >
+              {t === "self" ? "Yo" : "Otra persona"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {recipientType === "other" && (
+        <div className="flex flex-col gap-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="recipient-first-name"
+                className="text-xs font-medium text-neutral-600"
+              >
+                Nombre
+              </label>
+              <input
+                id="recipient-first-name"
+                type="text"
+                value={recipientFirstName}
+                onChange={(e) => setRecipientFirstName(e.target.value)}
+                required
+                className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="recipient-last-name" className="text-xs font-medium text-neutral-600">
+                Apellido
+              </label>
+              <input
+                id="recipient-last-name"
+                type="text"
+                value={recipientLastName}
+                onChange={(e) => setRecipientLastName(e.target.value)}
+                required
+                className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="recipient-relationship"
+                className="text-xs font-medium text-neutral-600"
+              >
+                Relación
+              </label>
+              <select
+                id="recipient-relationship"
+                value={recipientRelationship}
+                onChange={(e) => setRecipientRelationship(e.target.value as RecipientRelationship)}
+                className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              >
+                {RECIPIENT_RELATIONSHIPS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="recipient-age" className="text-xs font-medium text-neutral-600">
+                Edad
+              </label>
+              <input
+                id="recipient-age"
+                type="number"
+                min={1}
+                value={recipientAge}
+                onChange={(e) => setRecipientAge(e.target.value)}
+                required
+                className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-neutral-400">
+            La materia/idioma se elige abajo, en el formulario general.
+          </p>
+        </div>
+      )}
+
       {/* Materia */}
       <div className="flex flex-col gap-1.5">
         <label className="text-xs font-medium text-neutral-600">Materia</label>

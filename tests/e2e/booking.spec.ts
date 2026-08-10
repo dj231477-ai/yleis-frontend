@@ -112,4 +112,27 @@ test.describe("Student booking", () => {
 
     expect(page.url()).toContain("mercadopago.com");
   });
+
+  test("booking for someone else saves the recipient's data", async ({ page }) => {
+    await page.goto(`/app/student/booking/${TEACHER_ID}`);
+    await expect(page.getByRole("heading", { name: "Reservar clase" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Otra persona" }).click();
+    await page.getByLabel("Nombre").fill("Sofía");
+    await page.getByLabel("Apellido").fill("Pérez");
+    await page.getByLabel("Relación").selectOption("Herman@");
+    await page.getByLabel("Edad").fill("12");
+
+    await page.locator("select").nth(1).selectOption({ label: "Inglés" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await page.locator("select").nth(2).selectOption("11:00");
+    await page.getByRole("button", { name: "1 hora" }).click();
+
+    await Promise.all([
+      page.waitForURL(/mercadopago\.com/, { timeout: 20_000 }),
+      page.getByRole("button", { name: "Confirmar y pagar" }).click(),
+    ]);
+
+    expect(page.url()).toContain("mercadopago.com");
+  });
 });

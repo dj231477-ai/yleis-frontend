@@ -69,7 +69,7 @@ const FAQ = [
   },
   {
     q: "¿Las clases son en vivo o grabadas?",
-    a: "Todas las clases son en vivo vía Google Meet. No ofrecemos clases grabadas por el momento.",
+    a: "Las clases pueden ser presenciales o en vivo vía Google Meet, Teams o Zoom. Si deseas la grabación de tus clases, puedes solicitarle a tu profesor que grabe la clase o, en caso de no ser posible, háznoslo saber. Estaremos atentos para ayudarte.",
   },
 ];
 
