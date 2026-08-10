@@ -10,7 +10,8 @@ const GOOGLE_CALENDAR_EVENTS_URL =
   "https://www.googleapis.com/calendar/v3/calendars/primary/events";
 const GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo";
 
-const SCOPE = "https://www.googleapis.com/auth/calendar.events";
+const SCOPE =
+  "https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email";
 
 function getRedirectUri(): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
