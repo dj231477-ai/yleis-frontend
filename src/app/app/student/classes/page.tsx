@@ -108,7 +108,7 @@ export default async function StudentClassesPage() {
   }));
 
   const hasActivePlan =
-    activePlan != null && activePlan.plan_slug !== "free" && activePlan.remaining_classes > 0;
+    activePlan != null && activePlan.plan_slug !== "free" && activePlan.remaining_hours > 0;
 
   if (!student) {
     return <EmptyState subjects={subjects} teachers={teacherList} hasActivePlan={hasActivePlan} />;
@@ -143,7 +143,7 @@ export default async function StudentClassesPage() {
   }
 
   const activePlanLabel = activePlan
-    ? `${activePlan.plan_name} · ${activePlan.remaining_classes} clase${activePlan.remaining_classes !== 1 ? "s" : ""} disponible${activePlan.remaining_classes !== 1 ? "s" : ""}`
+    ? `${activePlan.plan_name} · ${activePlan.remaining_hours}h disponibles`
     : null;
 
   return (

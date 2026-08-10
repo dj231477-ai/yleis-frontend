@@ -229,7 +229,7 @@ export default async function StudentDashboardPage() {
                 <span className="text-xs text-neutral-400">
                   {plan.plan_slug === "free"
                     ? "Express ilimitado"
-                    : `${plan.remaining_classes} clase${plan.remaining_classes !== 1 ? "s" : ""}${
+                    : `${plan.remaining_hours}h${
                         plan.remaining_free_express > 0
                           ? ` · ${plan.remaining_free_express} Express`
                           : ""

@@ -47,10 +47,17 @@ export type Database = {
           confirmation_code: string | null;
           created_at: string;
           duration_min: number;
+          hours_charged: number | null;
           id: string;
           meet_link: string | null;
+          membership_id: string | null;
           notes: string | null;
           price: number;
+          recipient_age: number | null;
+          recipient_first_name: string | null;
+          recipient_last_name: string | null;
+          recipient_relationship: string | null;
+          recipient_type: string;
           reminder_1h_sent: boolean;
           reminder_24h_sent: boolean;
           scheduled_at: string;
@@ -66,10 +73,17 @@ export type Database = {
           confirmation_code?: string | null;
           created_at?: string;
           duration_min: number;
+          hours_charged?: number | null;
           id?: string;
           meet_link?: string | null;
+          membership_id?: string | null;
           notes?: string | null;
           price: number;
+          recipient_age?: number | null;
+          recipient_first_name?: string | null;
+          recipient_last_name?: string | null;
+          recipient_relationship?: string | null;
+          recipient_type?: string;
           reminder_1h_sent?: boolean;
           reminder_24h_sent?: boolean;
           scheduled_at: string;
@@ -85,10 +99,17 @@ export type Database = {
           confirmation_code?: string | null;
           created_at?: string;
           duration_min?: number;
+          hours_charged?: number | null;
           id?: string;
           meet_link?: string | null;
+          membership_id?: string | null;
           notes?: string | null;
           price?: number;
+          recipient_age?: number | null;
+          recipient_first_name?: string | null;
+          recipient_last_name?: string | null;
+          recipient_relationship?: string | null;
+          recipient_type?: string;
           reminder_1h_sent?: boolean;
           reminder_24h_sent?: boolean;
           scheduled_at?: string;
@@ -100,6 +121,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "bookings_membership_id_fkey";
+            columns: ["membership_id"];
+            isOneToOne: false;
+            referencedRelation: "memberships";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "bookings_student_id_fkey";
             columns: ["student_id"];
@@ -113,13 +141,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "subjects";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "bookings_teacher_id_fkey";
-            columns: ["teacher_id"];
-            isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["teacher_id"];
           },
           {
             foreignKeyName: "bookings_teacher_id_fkey";
@@ -232,20 +253,6 @@ export type Database = {
             foreignKeyName: "conversations_booking_id_fkey";
             columns: ["booking_id"];
             isOneToOne: false;
-            referencedRelation: "student_booking_history";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "conversations_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "conversations_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: false;
             referencedRelation: "teacher_pending_bookings";
             referencedColumns: ["booking_id"];
           },
@@ -320,13 +327,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "subjects";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "express_sessions_teacher_id_fkey";
-            columns: ["teacher_id"];
-            isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["teacher_id"];
           },
           {
             foreignKeyName: "express_sessions_teacher_id_fkey";
@@ -422,6 +422,7 @@ export type Database = {
           discount_pct: number | null;
           express_discount: number;
           free_express_per_month: number;
+          hours_included: number;
           id: string;
           is_active: boolean;
           name: string;
@@ -440,6 +441,7 @@ export type Database = {
           discount_pct?: number | null;
           express_discount?: number;
           free_express_per_month?: number;
+          hours_included?: number;
           id?: string;
           is_active?: boolean;
           name: string;
@@ -458,6 +460,7 @@ export type Database = {
           discount_pct?: number | null;
           express_discount?: number;
           free_express_per_month?: number;
+          hours_included?: number;
           id?: string;
           is_active?: boolean;
           name?: string;
@@ -479,6 +482,7 @@ export type Database = {
           plan_id: string;
           remaining_classes: number;
           remaining_free_express: number;
+          remaining_hours: number;
           remaining_reschedules: number;
           renewed_at: string | null;
           started_at: string | null;
@@ -494,6 +498,7 @@ export type Database = {
           plan_id: string;
           remaining_classes?: number;
           remaining_free_express?: number;
+          remaining_hours?: number;
           remaining_reschedules?: number;
           renewed_at?: string | null;
           started_at?: string | null;
@@ -509,6 +514,7 @@ export type Database = {
           plan_id?: string;
           remaining_classes?: number;
           remaining_free_express?: number;
+          remaining_hours?: number;
           remaining_reschedules?: number;
           renewed_at?: string | null;
           started_at?: string | null;
@@ -744,20 +750,6 @@ export type Database = {
             foreignKeyName: "payments_booking_id_fkey";
             columns: ["booking_id"];
             isOneToOne: false;
-            referencedRelation: "student_booking_history";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "payments_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "payments_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: false;
             referencedRelation: "teacher_pending_bookings";
             referencedColumns: ["booking_id"];
           },
@@ -823,20 +815,6 @@ export type Database = {
             foreignKeyName: "reviews_booking_id_fkey";
             columns: ["booking_id"];
             isOneToOne: true;
-            referencedRelation: "student_booking_history";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "reviews_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: true;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "reviews_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: true;
             referencedRelation: "teacher_pending_bookings";
             referencedColumns: ["booking_id"];
           },
@@ -846,13 +824,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "students";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "reviews_teacher_id_fkey";
-            columns: ["teacher_id"];
-            isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["teacher_id"];
           },
           {
             foreignKeyName: "reviews_teacher_id_fkey";
@@ -919,20 +890,6 @@ export type Database = {
             isOneToOne: true;
             referencedRelation: "bookings";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "sessions_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: true;
-            referencedRelation: "student_booking_history";
-            referencedColumns: ["booking_id"];
-          },
-          {
-            foreignKeyName: "sessions_booking_id_fkey";
-            columns: ["booking_id"];
-            isOneToOne: true;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["booking_id"];
           },
           {
             foreignKeyName: "sessions_booking_id_fkey";
@@ -1055,13 +1012,6 @@ export type Database = {
             foreignKeyName: "teacher_availabilities_teacher_id_fkey";
             columns: ["teacher_id"];
             isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["teacher_id"];
-          },
-          {
-            foreignKeyName: "teacher_availabilities_teacher_id_fkey";
-            columns: ["teacher_id"];
-            isOneToOne: false;
             referencedRelation: "teacher_dashboard_summary";
             referencedColumns: ["teacher_id"];
           },
@@ -1118,13 +1068,6 @@ export type Database = {
             foreignKeyName: "teacher_status_teacher_id_fkey";
             columns: ["teacher_id"];
             isOneToOne: true;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["teacher_id"];
-          },
-          {
-            foreignKeyName: "teacher_status_teacher_id_fkey";
-            columns: ["teacher_id"];
-            isOneToOne: true;
             referencedRelation: "teacher_dashboard_summary";
             referencedColumns: ["teacher_id"];
           },
@@ -1177,13 +1120,6 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "subjects";
             referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "teacher_subjects_teacher_id_fkey";
-            columns: ["teacher_id"];
-            isOneToOne: false;
-            referencedRelation: "student_upcoming_bookings";
-            referencedColumns: ["teacher_id"];
           },
           {
             foreignKeyName: "teacher_subjects_teacher_id_fkey";
@@ -1353,37 +1289,6 @@ export type Database = {
       };
     };
     Views: {
-      student_booking_history: {
-        Row: {
-          booking_id: string | null;
-          cancellation_reason: string | null;
-          duration_min: number | null;
-          has_review: boolean | null;
-          price: number | null;
-          scheduled_at: string | null;
-          status: string | null;
-          subject_name: string | null;
-          teacher_avatar: string | null;
-          teacher_name: string | null;
-        };
-        Relationships: [];
-      };
-      student_upcoming_bookings: {
-        Row: {
-          booking_id: string | null;
-          duration_min: number | null;
-          meet_link: string | null;
-          notes: string | null;
-          price: number | null;
-          scheduled_at: string | null;
-          status: string | null;
-          subject_name: string | null;
-          teacher_avatar: string | null;
-          teacher_id: string | null;
-          teacher_name: string | null;
-        };
-        Relationships: [];
-      };
       teacher_dashboard_summary: {
         Row: {
           classes_this_week: number | null;
@@ -1509,6 +1414,11 @@ export type Database = {
         Args: {
           p_duration_min: number;
           p_notes?: string;
+          p_recipient_age?: number;
+          p_recipient_first_name?: string;
+          p_recipient_last_name?: string;
+          p_recipient_relationship?: string;
+          p_recipient_type?: string;
           p_scheduled_at: string;
           p_subject_id: string;
           p_teacher_id: string;
@@ -1518,19 +1428,18 @@ export type Database = {
       get_active_plan: {
         Args: { p_user_id: string };
         Returns: {
-          classes_per_month: number;
           expires_at: string;
           express_discount: number;
           free_express_per_month: number;
+          hours_included: number;
           membership_id: string;
           plan_name: string;
           plan_slug: string;
           price_cop: number;
-          remaining_classes: number;
           remaining_free_express: number;
+          remaining_hours: number;
           remaining_reschedules: number;
           reschedules_per_month: number;
-          rollover_classes: number;
         }[];
       };
       get_available_slots: {
@@ -1555,6 +1464,10 @@ export type Database = {
           p_teacher_id: string;
         };
         Returns: string;
+      };
+      refund_membership_hours: {
+        Args: { p_hours: number; p_membership_id: string };
+        Returns: undefined;
       };
       restore_booking_class: {
         Args: { p_booking_id: string };

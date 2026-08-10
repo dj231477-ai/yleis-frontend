@@ -21,16 +21,20 @@ function randomFutureDate(): string {
   return d.toISOString().split("T")[0];
 }
 
-// La regla de negocio bloquea una 2da reserva pendiente con el mismo profesor
-// ("Ya tienes una reserva pendiente...") — sin esto el test no es repetible.
-async function cancelExistingPendingBookings() {
+async function studentAccessToken(): Promise<string> {
   const tokenRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({ email: STUDENT_EMAIL, password: STUDENT_PASSWORD }),
   });
   const { access_token } = await tokenRes.json();
-  const authHeaders = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${access_token}` };
+  return access_token;
+}
+
+// La regla de negocio bloquea una 2da reserva pendiente con el mismo profesor
+// ("Ya tienes una reserva pendiente...") — sin esto el test no es repetible.
+async function cancelExistingPendingBookings(accessToken: string) {
+  const authHeaders = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` };
 
   const studentRes = await fetch(`${SUPABASE_URL}/rest/v1/students?select=id`, {
     headers: authHeaders,
@@ -39,7 +43,7 @@ async function cancelExistingPendingBookings() {
   if (!student) return;
 
   const bookingsRes = await fetch(
-    `${SUPABASE_URL}/rest/v1/bookings?student_id=eq.${student.id}&teacher_id=eq.${TEACHER_ID}&status=eq.pending&select=id`,
+    `${SUPABASE_URL}/rest/v1/bookings?student_id=eq.${student.id}&teacher_id=eq.${TEACHER_ID}&status=in.(pending,pending_teacher)&select=id`,
     { headers: authHeaders }
   );
   const pending: { id: string }[] = await bookingsRes.json();
@@ -49,12 +53,27 @@ async function cancelExistingPendingBookings() {
       method: "POST",
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${access_token}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ booking_id: booking.id, reason: "E2E cleanup" }),
     });
   }
+}
+
+// Resetea el saldo del paquete de la cuenta de prueba a un valor fijo, vía
+// una función restringida solo a este email (ver migración 038) — así el
+// test no depende de haber comprado un paquete real por Mercado Pago.
+async function grantTestPackageHours(accessToken: string, hours: number) {
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/grant_test_package_hours`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_hours: hours }),
+  });
 }
 
 // onboarding.spec.ts reusa esta misma cuenta y la deja en onboarding_step
@@ -83,15 +102,17 @@ async function ensureTeacherIsVerified() {
   });
 }
 
-test.describe("Student booking", () => {
+test.describe("Student booking — with package balance", () => {
   test.use({ storageState: "tests/e2e/.auth/student.json" });
 
   test.beforeEach(async () => {
     await ensureTeacherIsVerified();
-    await cancelExistingPendingBookings();
+    const token = await studentAccessToken();
+    await cancelExistingPendingBookings(token);
+    await grantTestPackageHours(token, 5);
   });
 
-  test("scheduling a class creates a booking and redirects to Mercado Pago checkout", async ({
+  test("scheduling a class discounts the hours from the package — no Mercado Pago", async ({
     page,
   }) => {
     await page.goto(`/app/student/booking/${TEACHER_ID}`);
@@ -103,14 +124,12 @@ test.describe("Student booking", () => {
     await page.locator("select").nth(1).selectOption("10:00");
     await page.getByRole("button", { name: "1 hora" }).click();
 
-    // El submit crea el booking, pide la preferencia a Mercado Pago, y redirige
-    // a un dominio externo (mercadopago.com) — no completamos el pago real.
-    await Promise.all([
-      page.waitForURL(/mercadopago\.com/, { timeout: 20_000 }),
-      page.getByRole("button", { name: "Confirmar y pagar" }).click(),
-    ]);
+    // Ya no pasa por Mercado Pago — el submit descuenta del saldo y va
+    // directo a la confirmación en el propio sitio.
+    await page.getByRole("button", { name: "Solicitar clase" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
 
-    expect(page.url()).toContain("mercadopago.com");
+    await expect(page.getByText(/solicitud fue enviada|reserva confirmada/i)).toBeVisible();
   });
 
   test("booking for someone else saves the recipient's data", async ({ page }) => {
@@ -128,11 +147,34 @@ test.describe("Student booking", () => {
     await page.locator("select").nth(2).selectOption("11:00");
     await page.getByRole("button", { name: "1 hora" }).click();
 
-    await Promise.all([
-      page.waitForURL(/mercadopago\.com/, { timeout: 20_000 }),
-      page.getByRole("button", { name: "Confirmar y pagar" }).click(),
-    ]);
+    await page.getByRole("button", { name: "Solicitar clase" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
 
-    expect(page.url()).toContain("mercadopago.com");
+    await expect(page.getByText(/Sofía Pérez/)).toBeVisible();
+  });
+});
+
+test.describe("Student booking — without package balance", () => {
+  test.use({ storageState: "tests/e2e/.auth/student.json" });
+
+  test.beforeEach(async () => {
+    await ensureTeacherIsVerified();
+    const token = await studentAccessToken();
+    await cancelExistingPendingBookings(token);
+    await grantTestPackageHours(token, 0);
+  });
+
+  test("shows a no-balance error with a link to buy a package", async ({ page }) => {
+    await page.goto(`/app/student/booking/${TEACHER_ID}`);
+    await expect(page.getByRole("heading", { name: "Reservar clase" })).toBeVisible();
+
+    await page.locator("select").first().selectOption({ label: "Inglés" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await page.locator("select").nth(1).selectOption("10:00");
+    await page.getByRole("button", { name: "1 hora" }).click();
+    await page.getByRole("button", { name: "Solicitar clase" }).click();
+
+    await expect(page.getByText(/saldo de horas/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("link", { name: "Comprar un paquete" })).toBeVisible();
   });
 });

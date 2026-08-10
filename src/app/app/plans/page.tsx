@@ -70,9 +70,9 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
     <div className="flex w-full flex-col items-start gap-8 px-6 py-8">
       {/* Header */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-heading-2 font-heading-2 text-default-font">Planes</h1>
+        <h1 className="text-heading-2 font-heading-2 text-default-font">Paquetes</h1>
         <p className="text-body font-body text-subtext-color">
-          Elige el plan que mejor se adapte a tu ritmo de aprendizaje.
+          Compra un paquete de horas para solicitar clases y paquetes con tu profesor asignado.
         </p>
       </div>
 
@@ -109,7 +109,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="text-body-bold font-body-bold text-default-font">
-              Plan actual: {activePlan.plan_name}
+              Paquete actual: {activePlan.plan_name}
             </span>
             <span className="text-caption font-caption text-subtext-color">
               Vence el{" "}
@@ -119,9 +119,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
                 year: "numeric",
               })}
               {" · "}
-              {activePlan.remaining_classes} clase
-              {activePlan.remaining_classes !== 1 ? "s" : ""} disponible
-              {activePlan.remaining_classes !== 1 ? "s" : ""}
+              {activePlan.remaining_hours}h disponibles
               {activePlan.remaining_free_express > 0 &&
                 ` · ${activePlan.remaining_free_express} Express gratis`}
             </span>
@@ -151,8 +149,10 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
 
       {/* Nota al pie */}
       <p className="text-caption font-caption text-neutral-400">
-        Los planes se renuevan automáticamente cada 30 días. Las clases no usadas no son
-        reembolsables. Estándar y Premium acumulan 1–2 clases al renovar (rollover).
+        Los paquetes vencen a los 30 días de la compra — no se renuevan automáticamente. Si comprás
+        uno nuevo antes de que venza el actual, las horas restantes se suman y el vencimiento se
+        extiende 30 días desde la nueva compra. Las horas no usadas al vencer un paquete no son
+        reembolsables.
       </p>
     </div>
   );

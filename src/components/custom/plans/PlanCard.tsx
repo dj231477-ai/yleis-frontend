@@ -35,27 +35,18 @@ function tierFromSlug(slug: string) {
 
 const PLAN_FEATURES: Record<string, string[]> = {
   free: ["Clases Express ilimitadas", "Acceso al catálogo de profesores", "Perfil de estudiante"],
-  basico: [
-    "5 clases programadas/mes",
-    "5% descuento en precio de suscripción",
-    "1 reprogramación/mes",
-    "Chat con el profesor",
-  ],
+  basico: ["5 horas para solicitar clases o paquetes", "Vence a los 30 días de la compra"],
   estandar: [
-    "8 clases programadas/mes",
-    "8% descuento en suscripción",
-    "1 Express gratis/mes",
+    "8 horas para solicitar clases o paquetes",
+    "1 Express gratis",
     "8% descuento en Express",
-    "2 reprogramaciones/mes",
-    "Acumula 1 clase al renovar",
+    "Vence a los 30 días de la compra",
   ],
   premium: [
-    "12 clases programadas/mes",
-    "12% descuento en suscripción",
-    "2 Express gratis/mes",
+    "12 horas para solicitar clases o paquetes",
+    "2 Express gratis",
     "12% descuento en Express",
-    "3 reprogramaciones/mes",
-    "Acumula 2 clases al renovar",
+    "Vence a los 30 días de la compra",
   ],
 };
 
@@ -160,7 +151,9 @@ export function PlanCard({ plan, partner, isCurrent }: Props) {
             {formatCOP(activePlan.price_cop)}
           </span>
           {activePlan.price_cop > 0 && (
-            <span className="text-body font-body text-subtext-color">/mes</span>
+            <span className="text-body font-body text-subtext-color">
+              · {activePlan.hours_included}h
+            </span>
           )}
         </div>
       </div>
@@ -184,11 +177,11 @@ export function PlanCard({ plan, partner, isCurrent }: Props) {
         )}
         {isCurrent ? (
           <Button variant="neutral-secondary" size="medium" className="w-full" disabled>
-            Plan activo
+            Paquete activo
           </Button>
         ) : activePlan.price_cop === 0 ? (
           <Button variant="neutral-secondary" size="medium" className="w-full" disabled>
-            Plan por defecto
+            Sin costo
           </Button>
         ) : (
           <Button
@@ -198,7 +191,7 @@ export function PlanCard({ plan, partner, isCurrent }: Props) {
             loading={loading}
             onClick={handleActivate}
           >
-            {isPremium ? "Activar Premium" : `Activar ${activePlan.name.replace(/ [AB]$/, "")}`}
+            {isPremium ? "Comprar Premium" : `Comprar ${activePlan.name.replace(/ [AB]$/, "")}`}
           </Button>
         )}
       </div>

@@ -72,6 +72,7 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
 
   const isMP = paymentState === "success" || paymentState === "pending";
   const isPending = paymentState === "pending";
+  const paidWithPackage = !!booking.membership_id;
 
   return (
     <div className="bg-neutral-50 min-h-full">
@@ -91,7 +92,9 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
               ? "Tu pago está siendo procesado. Te avisaremos cuando se confirme."
               : isMP
                 ? "Tu pago fue recibido. El profesor confirmará la clase en breve."
-                : "Tu solicitud fue enviada. El profesor la confirmará pronto."}
+                : paidWithPackage
+                  ? "Se descontó de tu paquete. El profesor confirmará la clase pronto."
+                  : "Tu solicitud fue enviada. El profesor la confirmará pronto."}
           </p>
         </div>
 
@@ -146,8 +149,8 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
           )}
         </div>
 
-        {/* Banner pago manual (flujo sin MP) */}
-        {!isMP && (
+        {/* Banner pago manual — solo si de verdad no está pagada (ni MP ni paquete) */}
+        {!isMP && !paidWithPackage && (
           <div className="mb-6 rounded-xl border border-warning-200 bg-warning-50 p-5">
             <div className="mb-2 flex items-center gap-2">
               <FeatherAlertCircle className="h-4 w-4 text-warning-700" />

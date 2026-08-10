@@ -41,3 +41,6 @@ supabase/.temp/
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Graphify (análisis local del código, no es fuente)
+/graphify-out/

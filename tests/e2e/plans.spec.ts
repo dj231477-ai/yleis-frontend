@@ -3,17 +3,17 @@ import { expect, test } from "@playwright/test";
 test.describe("Membership plans", () => {
   test.use({ storageState: "tests/e2e/.auth/student.json" });
 
-  test("activating a paid plan redirects to Mercado Pago checkout", async ({ page }) => {
+  test("buying a paid package redirects to Mercado Pago checkout", async ({ page }) => {
     await page.goto("/app/plans");
-    await expect(page.getByRole("heading", { name: "Planes" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Paquetes" })).toBeVisible();
 
-    // Cualquier botón "Activar ..." de un plan pago (el free/actual están disabled)
-    const activateButton = page.getByRole("button", { name: /^Activar/ }).first();
-    await expect(activateButton).toBeVisible();
+    // Cualquier botón "Comprar ..." de un paquete pago (el free/actual están disabled)
+    const buyButton = page.getByRole("button", { name: /^Comprar/ }).first();
+    await expect(buyButton).toBeVisible();
 
     await Promise.all([
       page.waitForURL(/mercadopago\.com/, { timeout: 20_000 }),
-      activateButton.click(),
+      buyButton.click(),
     ]);
 
     expect(page.url()).toContain("mercadopago.com");

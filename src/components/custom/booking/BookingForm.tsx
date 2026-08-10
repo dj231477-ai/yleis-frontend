@@ -1,14 +1,9 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
-import {
-  type BookingRecipient,
-  RECIPIENT_RELATIONSHIPS,
-  type RecipientRelationship,
-  createBooking,
-} from "@/services/bookings";
+import { RECIPIENT_RELATIONSHIPS, type RecipientRelationship } from "@/services/bookings";
 import { Button } from "@/ui/components/Button";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 type Subject = { id: string; name: string; category: string | null };
 
@@ -43,6 +38,7 @@ function formatCOP(amount: number) {
 }
 
 export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Props) {
+  const router = useRouter();
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? "");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
@@ -50,6 +46,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [noBalance, setNoBalance] = useState(false);
 
   // ¿Quién recibe la clase?
   const [recipientType, setRecipientType] = useState<"self" | "other">("self");
@@ -60,11 +57,10 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
   );
   const [recipientAge, setRecipientAge] = useState("");
 
-  const price = useMemo(() => hourlyRate * (durationMin / 60), [hourlyRate, durationMin]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setNoBalance(false);
 
     if (!date) {
       setError("Selecciona una fecha");
@@ -75,7 +71,13 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
       return;
     }
 
-    let recipient: BookingRecipient;
+    let recipient: {
+      type: "self" | "other";
+      firstName?: string;
+      lastName?: string;
+      relationship?: RecipientRelationship;
+      age?: number;
+    };
     if (recipientType === "self") {
       recipient = { type: "self" };
     } else {
@@ -100,51 +102,35 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
     const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
     setLoading(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      setError("Sesión expirada. Inicia sesión de nuevo.");
-      setLoading(false);
-      return;
-    }
 
-    const { bookingId, error: bookingError } = await createBooking(supabase, user.id, {
-      teacherId,
-      subjectId,
-      scheduledAt,
-      durationMin,
-      price,
-      notes: notes.trim() || undefined,
-      recipient,
-    });
-
-    if (bookingError) {
-      setError(bookingError);
-      setLoading(false);
-      return;
-    }
-
-    // Crear preferencia de pago en Mercado Pago
-    const prefRes = await fetch("/api/payments/create-preference", {
+    // Se descuenta del saldo de horas del paquete activo — no pasa por
+    // Mercado Pago (eso ya se cobró al comprar el paquete).
+    const res = await fetch("/api/bookings/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bookingId }),
+      body: JSON.stringify({
+        teacherId,
+        subjectId,
+        scheduledAt,
+        durationMin,
+        notes: notes.trim() || undefined,
+        recipient,
+      }),
     });
 
-    if (!prefRes.ok) {
-      const { error: prefError } = (await prefRes.json().catch(() => ({}))) as {
-        error?: string;
-      };
-      setError(prefError ?? "No se pudo iniciar el pago. Intenta de nuevo.");
+    const data = (await res.json().catch(() => ({}))) as {
+      bookingId?: string;
+      error?: string;
+    };
+
+    if (!res.ok || !data.bookingId) {
+      setError(data.error ?? "No se pudo crear la reserva. Intenta de nuevo.");
+      setNoBalance((data.error ?? "").includes("saldo de horas"));
       setLoading(false);
       return;
     }
 
-    const { init_point } = (await prefRes.json()) as { init_point: string };
-    // Mercado Pago Checkout Pro vive en un dominio externo
-    window.location.href = init_point;
+    router.push(`/app/student/booking/confirmation?id=${data.bookingId}`);
   }
 
   // Agrupar materias por categoría
@@ -339,23 +325,30 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
         />
       </div>
 
-      {/* Resumen de precio */}
+      {/* Resumen — se descuenta del saldo del paquete, no se cobra de nuevo */}
       <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-neutral-600">
             {formatCOP(hourlyRate)}/hora × {durationMin / 60}h
           </span>
-          <span className="text-lg font-bold text-brand-700">{formatCOP(price)}</span>
+          <span className="text-lg font-bold text-brand-700">
+            {durationMin / 60}h de tu paquete
+          </span>
         </div>
         <p className="mt-1 text-xs text-neutral-500">
-          Pago seguro vía Mercado Pago · {teacherName} confirma al acreditarse
+          Se descuenta de tu saldo de horas · {teacherName} confirma al recibir la solicitud
         </p>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-error-50 border border-error-200 px-3 py-2 text-sm text-error">
-          {error}
-        </p>
+        <div className="rounded-lg bg-error-50 border border-error-200 px-3 py-2 text-sm text-error">
+          <p>{error}</p>
+          {noBalance && (
+            <a href="/app/plans" className="mt-1 inline-block font-medium underline">
+              Comprar un paquete
+            </a>
+          )}
+        </div>
       )}
 
       <Button
@@ -365,7 +358,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
         type="submit"
         className="w-full"
       >
-        Confirmar y pagar
+        Solicitar clase
       </Button>
     </form>
   );

@@ -28,7 +28,7 @@ serve(async (req: Request): Promise<Response> => {
       .from("bookings")
       .select(`
         id, student_id, teacher_id, scheduled_at, duration_min,
-        status, price,
+        status, price, membership_id, hours_charged,
         students!inner(user_id, users!inner(email, full_name)),
         teachers!inner(user_id)
       `)
@@ -46,7 +46,7 @@ serve(async (req: Request): Promise<Response> => {
       return err("Sin permisos sobre esta reserva", 403, "FORBIDDEN");
     }
 
-    const cancellableStatuses = ["pending", "confirmed", "paid"];
+    const cancellableStatuses = ["pending", "pending_teacher", "confirmed", "paid"];
     if (!cancellableStatuses.includes(booking.status)) {
       return err(
         `No se puede cancelar una reserva en estado: ${booking.status}`,
@@ -89,6 +89,19 @@ serve(async (req: Request): Promise<Response> => {
     if (updateError) {
       console.error("[cancel-booking] Error actualizando booking:", updateError);
       return err("Error al cancelar la reserva", 500, "DB_ERROR");
+    }
+
+    // Si la clase se pagó con saldo de un paquete (no con Mercado Pago),
+    // devolver las horas completas al saldo — siempre, sin escalar por
+    // cercanía a la clase (eso solo aplica al reembolso en plata de abajo).
+    if (booking.membership_id && booking.hours_charged) {
+      const { error: refundHoursError } = await supabaseAdmin.rpc("refund_membership_hours", {
+        p_membership_id: booking.membership_id,
+        p_hours: booking.hours_charged,
+      });
+      if (refundHoursError) {
+        console.error("[cancel-booking] Error devolviendo horas al paquete:", refundHoursError);
+      }
     }
 
     // Actualizar el pago si existe

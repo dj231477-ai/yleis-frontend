@@ -6,7 +6,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 const ERROR_MESSAGES: Record<string, string> = {
   STUDENT_NOT_FOUND: "No se encontró tu perfil de estudiante.",
-  NO_CLASSES_AVAILABLE: "No tienes clases disponibles en tu plan activo.",
+  NO_HOURS_AVAILABLE: "No tienes saldo de horas disponible en tu paquete.",
   TEACHER_RATE_NOT_SET: "El profesor no tiene tarifa configurada aún.",
 };
 
@@ -23,11 +23,20 @@ export async function POST(req: Request) {
     scheduledAt?: string;
     durationMin?: number;
     notes?: string;
+    recipient?: {
+      type: "self" | "other";
+      firstName?: string;
+      lastName?: string;
+      relationship?: string;
+      age?: number;
+    };
   } | null;
 
   if (!body?.teacherId || !body?.subjectId || !body?.scheduledAt || !body?.durationMin) {
     return NextResponse.json({ error: "Campos requeridos faltantes" }, { status: 400 });
   }
+
+  const recipient = body.recipient ?? { type: "self" as const };
 
   // biome-ignore lint/suspicious/noExplicitAny: RPC no está en el schema generado
   const { data, error } = await (supabase as any).rpc("create_scheduled_booking", {
@@ -36,6 +45,11 @@ export async function POST(req: Request) {
     p_scheduled_at: body.scheduledAt,
     p_duration_min: body.durationMin,
     p_notes: body.notes ?? null,
+    p_recipient_type: recipient.type,
+    p_recipient_first_name: recipient.type === "other" ? recipient.firstName : null,
+    p_recipient_last_name: recipient.type === "other" ? recipient.lastName : null,
+    p_recipient_relationship: recipient.type === "other" ? recipient.relationship : null,
+    p_recipient_age: recipient.type === "other" ? recipient.age : null,
   });
 
   if (error) {
