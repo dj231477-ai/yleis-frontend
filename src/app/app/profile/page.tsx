@@ -1,3 +1,4 @@
+import { GoogleCalendarConnection } from "@/components/custom/teacher/GoogleCalendarConnection";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
@@ -34,7 +35,10 @@ function initials(name: string) {
     .toUpperCase();
 }
 
-export default async function ProfilePage() {
+type SearchParams = Promise<{ calendar?: "connected" | "cancelled" | "error" }>;
+
+export default async function ProfilePage({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
   const supabase = await createClient();
   const {
     data: { user: authUser },
@@ -50,7 +54,7 @@ export default async function ProfilePage() {
     supabase
       .from("teachers")
       .select(
-        "headline, bio, hourly_rate, languages, onboarding_step, rating_avg, total_reviews, years_experience"
+        "headline, bio, hourly_rate, languages, onboarding_step, rating_avg, total_reviews, years_experience, google_calendar_connected, google_calendar_email"
       )
       .eq("user_id", authUser.id)
       .maybeSingle(),
@@ -73,6 +77,17 @@ export default async function ProfilePage() {
   return (
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6">
+        {sp.calendar === "connected" && (
+          <div className="mb-5 rounded-xl border border-success-200 bg-success-50 px-4 py-3 text-sm font-medium text-success-700">
+            Google Calendar conectado — el link de Meet se va a generar solo al confirmar una clase.
+          </div>
+        )}
+        {sp.calendar === "error" && (
+          <div className="mb-5 rounded-xl border border-error-200 bg-error-50 px-4 py-3 text-sm font-medium text-error-700">
+            No se pudo conectar Google Calendar. Intenta de nuevo.
+          </div>
+        )}
+
         {/* Hero card */}
         <div className="rounded-xl border border-neutral-200 bg-white p-6 mb-5">
           <div className="flex flex-col sm:flex-row items-start gap-5">
@@ -167,6 +182,19 @@ export default async function ProfilePage() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Conexión de Google Calendar (cualquier profesor, verificado o no) */}
+        {teacher && (
+          <div className="rounded-xl border border-neutral-200 bg-white p-6 mb-5">
+            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-neutral-400">
+              Calendario
+            </h2>
+            <GoogleCalendarConnection
+              connected={teacher.google_calendar_connected ?? false}
+              email={teacher.google_calendar_email}
+            />
           </div>
         )}
 

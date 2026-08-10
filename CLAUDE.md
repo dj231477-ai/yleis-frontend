@@ -144,16 +144,25 @@ Post-MVP:
 
 MVP:
 
-- Google Meet manual
+- Google Meet — automático si el profesor conecta su Google Calendar (2026-08-10), manual si no lo conecta (el profesor pega el link al confirmar, como antes)
 
 Post-MVP:
 
-- Integracion automatizada de video
 - Agora.io
 - Daily.co
 - Grabaciones
 
 No implementar Agora.io o Daily.co en el MVP salvo instruccion explicita del founder.
+
+**Integración Google Calendar (profesor, opcional):**
+
+- El profesor conecta su cuenta desde `/app/profile` (`GoogleCalendarConnection.tsx`) — OAuth2 directo con Google (no vía Supabase Auth, porque necesitamos guardar el `refresh_token` para crear eventos después del login)
+- Mismo Google Cloud OAuth Client que el login (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`), con el scope `calendar.events` agregado
+- Rutas: `/api/teacher/calendar/connect` (redirige a Google), `/callback` (guarda tokens), `/disconnect`
+- El evento + link de Meet se crean recién cuando el profesor **confirma** la reserva (`/api/bookings/[id]/accept`), no al solicitarla — evita eventos fantasma si nunca confirma
+- Best-effort: si falla la creación del evento, la reserva se confirma igual sin Meet automático (fallback al link manual)
+- Tokens en `teacher_calendar_connections` (RLS: cada profesor solo ve/gestiona su propia fila — sin `service_role` en frontend, por regla del proyecto)
+- Scope `calendar.events` es "restringido" en Google — la app va a mostrar pantalla de "app no verificada" hasta pasar la verificación de Google; mientras tanto hay que agregar cada profesor de prueba como "test user" en el OAuth consent screen (límite ~100)
 
 ---
 

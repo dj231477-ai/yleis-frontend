@@ -1038,6 +1038,68 @@ export type Database = {
           },
         ];
       };
+      teacher_calendar_connections: {
+        Row: {
+          access_token: string | null;
+          created_at: string;
+          google_email: string;
+          id: string;
+          refresh_token: string;
+          teacher_id: string;
+          token_expires_at: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          access_token?: string | null;
+          created_at?: string;
+          google_email: string;
+          id?: string;
+          refresh_token: string;
+          teacher_id: string;
+          token_expires_at?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          access_token?: string | null;
+          created_at?: string;
+          google_email?: string;
+          id?: string;
+          refresh_token?: string;
+          teacher_id?: string;
+          token_expires_at?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "teacher_calendar_connections_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: true;
+            referencedRelation: "teacher_dashboard_summary";
+            referencedColumns: ["teacher_id"];
+          },
+          {
+            foreignKeyName: "teacher_calendar_connections_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: true;
+            referencedRelation: "teacher_public_catalog";
+            referencedColumns: ["teacher_id"];
+          },
+          {
+            foreignKeyName: "teacher_calendar_connections_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: true;
+            referencedRelation: "teacher_public_profile";
+            referencedColumns: ["teacher_id"];
+          },
+          {
+            foreignKeyName: "teacher_calendar_connections_teacher_id_fkey";
+            columns: ["teacher_id"];
+            isOneToOne: true;
+            referencedRelation: "teachers";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       teacher_status: {
         Row: {
           created_at: string;
@@ -1158,6 +1220,8 @@ export type Database = {
           created_at: string;
           currency: string;
           documents_urls: Json;
+          google_calendar_connected: boolean;
+          google_calendar_email: string | null;
           headline: string | null;
           hourly_rate: number | null;
           id: string;
@@ -1184,6 +1248,8 @@ export type Database = {
           created_at?: string;
           currency?: string;
           documents_urls?: Json;
+          google_calendar_connected?: boolean;
+          google_calendar_email?: string | null;
           headline?: string | null;
           hourly_rate?: number | null;
           id?: string;
@@ -1210,6 +1276,8 @@ export type Database = {
           created_at?: string;
           currency?: string;
           documents_urls?: Json;
+          google_calendar_connected?: boolean;
+          google_calendar_email?: string | null;
           headline?: string | null;
           hourly_rate?: number | null;
           id?: string;
@@ -1455,6 +1523,7 @@ export type Database = {
         Returns: string;
       };
       get_user_role: { Args: never; Returns: string };
+      grant_test_package_hours: { Args: { p_hours?: number }; Returns: string };
       process_teacher_verification: {
         Args: {
           p_auto_threshold?: number;
