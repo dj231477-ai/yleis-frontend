@@ -1,5 +1,6 @@
 import { ClassChat } from "@/components/custom/chat/ClassChat";
 import { CancelBookingButton } from "@/components/custom/classes/CancelBookingButton";
+import { FinishClassButton } from "@/components/custom/teacher/FinishClassButton";
 import { StartClassButton } from "@/components/custom/teacher/StartClassButton";
 import { createClient } from "@/lib/supabase/server";
 import { getTeacherProfile } from "@/services/teachers";
@@ -81,7 +82,7 @@ export default async function TeacherClassDetailPage({
   const { data: booking } = await (supabase as any)
     .from("bookings")
     .select(`
-      id, scheduled_at, duration_min, price, status, meet_link, confirmation_code,
+      id, scheduled_at, scheduled_end_at, duration_min, price, status, meet_link, confirmation_code,
       recipient_type, recipient_first_name, recipient_last_name, recipient_relationship, recipient_age,
       subjects(name),
       students(users(full_name, avatar_url))
@@ -196,10 +197,11 @@ export default async function TeacherClassDetailPage({
           </div>
         )}
 
-        {/* In progress indicator */}
+        {/* In progress — finalizar clase */}
         {booking.status === "in_progress" && (
-          <div className="mb-6 rounded-xl border border-success-200 bg-success-50 px-5 py-3">
-            <p className="text-sm font-semibold text-success-700">Clase en curso</p>
+          <div className="mb-6 rounded-xl border border-success-200 bg-success-50 p-5">
+            <p className="mb-3 text-sm font-semibold text-success-700">Clase en curso</p>
+            <FinishClassButton bookingId={bookingId} scheduledEndAt={booking.scheduled_end_at} />
           </div>
         )}
 

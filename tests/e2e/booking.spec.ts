@@ -254,3 +254,65 @@ test.describe("Booking cancellation", () => {
     expect(hoursAfterCancel).toBe(hoursAfterBooking + 1);
   });
 });
+
+test.describe("Booking lifecycle — start and finish", () => {
+  test.use({ storageState: "tests/e2e/.auth/student.json" });
+
+  test.beforeEach(async () => {
+    await ensureTeacherIsVerified();
+    const token = await studentAccessToken();
+    await cancelExistingPendingBookings(token);
+    await grantTestPackageHours(token, 5);
+  });
+
+  test("the teacher can start a class with the code and finish it, warning if the contracted time hasn't elapsed", async ({
+    page,
+    browser,
+  }) => {
+    // 1. El estudiante solicita la clase
+    await page.goto(`/app/student/booking/${TEACHER_ID}`);
+    await expect(page.getByRole("heading", { name: "Reservar clase" })).toBeVisible();
+    await page.locator("select").first().selectOption({ label: "Inglés" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await page.locator("select").nth(1).selectOption("10:00");
+    await page.getByRole("button", { name: "1 hora" }).click();
+    await page.getByRole("button", { name: "Solicitar clase" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
+    const rawBookingId = new URL(page.url()).searchParams.get("id");
+    expect(rawBookingId).toBeTruthy();
+    const bookingId = rawBookingId as string;
+
+    const studentToken = await studentAccessToken();
+
+    // 2. El profesor confirma y obtiene el código de inicio
+    const teacherContext = await browser.newContext({
+      storageState: "tests/e2e/.auth/teacher.json",
+    });
+    const acceptRes = await teacherContext.request.post(`/api/bookings/${bookingId}/accept`);
+    expect(acceptRes.ok()).toBeTruthy();
+    const { confirmationCode } = (await acceptRes.json()) as { confirmationCode: string };
+    expect(confirmationCode).toBeTruthy();
+
+    // 3. El profesor inicia la clase con el código (la fecha es futura, así que
+    // el tiempo contratado todavía no transcurrió)
+    const startRes = await teacherContext.request.post(`/api/bookings/${bookingId}/start`, {
+      data: { code: confirmationCode },
+    });
+    expect(startRes.ok()).toBeTruthy();
+    expect(await fetchBookingStatus(studentToken, bookingId)).toBe("in_progress");
+
+    // 4. El profesor intenta finalizar antes de tiempo — debe ver la advertencia
+    const teacherPage = await teacherContext.newPage();
+    await teacherPage.goto(`/app/teacher/classes/${bookingId}`);
+    await teacherPage.getByRole("button", { name: "Finalizar clase" }).click();
+    await expect(
+      teacherPage.getByText(/Aún no ha transcurrido todo el tiempo contratado/)
+    ).toBeVisible();
+
+    await teacherPage.getByRole("button", { name: "Sí, finalizar" }).click();
+    await expect(teacherPage.getByText("Completada")).toBeVisible({ timeout: 10_000 });
+    expect(await fetchBookingStatus(studentToken, bookingId)).toBe("completed");
+
+    await teacherContext.close();
+  });
+});
