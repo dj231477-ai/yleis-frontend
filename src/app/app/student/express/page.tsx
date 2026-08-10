@@ -112,6 +112,27 @@ export default function StudentExpressPage() {
 
   async function handleCancelExpress() {
     stopPolling();
+    if (sessionId) {
+      const res = await fetch("/api/express/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => null);
+
+      if (!res?.ok) {
+        // Puede que un profesor la haya aceptado justo antes de cancelar - seguimos
+        // el flujo normal de match en vez de descartar la sesión silenciosamente.
+        const statusRes = await fetch(`/api/express/status/${sessionId}`).catch(() => null);
+        const statusJson = statusRes?.ok
+          ? ((await statusRes.json()) as { status: string; bookingId?: string | null })
+          : null;
+        if (statusJson?.status === "matched" && statusJson.bookingId) {
+          setExpressStatus("matched");
+          router.push(`/app/student/classes/${statusJson.bookingId}`);
+          return;
+        }
+      }
+    }
     setSessionId(null);
     setExpiresAt(null);
     setExpressStatus("idle");
