@@ -1,0 +1,245 @@
+{
+  "name": "W01 — booking-created",
+  "nodes": [
+    {
+      "id": "w01-trigger",
+      "name": "Webhook: booking creado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking-created",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-validate-secret",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.SUPABASE_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w01-stop-invalid",
+      "name": "Secreto inválido — parar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 440],
+      "parameters": {}
+    },
+    {
+      "id": "w01-get-booking",
+      "name": "Obtener datos del booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.booking_id }}" },
+            {
+              "name": "select",
+              "value": "id,scheduled_at,duration_min,price,status,teacher_id,student_id,subject_id,subjects(name),teachers(user_id,users(full_name,email)),students(user_id,users(full_name,email))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-set-meet-manual",
+      "name": "Meet link manual — notificar profesor",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [900, 300],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            { "id": "booking", "name": "booking", "value": "={{ $json[0] }}", "type": "object" },
+            {
+              "id": "teacher_email",
+              "name": "teacher_email",
+              "value": "={{ $json[0].teachers.users.email }}",
+              "type": "string"
+            },
+            {
+              "id": "teacher_name",
+              "name": "teacher_name",
+              "value": "={{ $json[0].teachers.users.full_name }}",
+              "type": "string"
+            },
+            {
+              "id": "student_email",
+              "name": "student_email",
+              "value": "={{ $json[0].students.users.email }}",
+              "type": "string"
+            },
+            {
+              "id": "student_name",
+              "name": "student_name",
+              "value": "={{ $json[0].students.users.full_name }}",
+              "type": "string"
+            },
+            {
+              "id": "subject_name",
+              "name": "subject_name",
+              "value": "={{ $json[0].subjects.name }}",
+              "type": "string"
+            },
+            {
+              "id": "scheduled_at",
+              "name": "scheduled_at",
+              "value": "={{ $json[0].scheduled_at }}",
+              "type": "string"
+            },
+            { "id": "price", "name": "price", "value": "={{ $json[0].price }}", "type": "number" }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w01-email-student",
+      "name": "Email al alumno — reserva en proceso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $json.student_email }}\"],\n  \"subject\": \"Reserva recibida — esperando confirmación del profesor\",\n  \"template_id\": \"E05\",\n  \"variables\": {\n    \"student_name\": \"{{ $json.student_name }}\",\n    \"teacher_name\": \"{{ $json.teacher_name }}\",\n    \"subject_name\": \"{{ $json.subject_name }}\",\n    \"scheduled_at\": \"{{ $json.scheduled_at }}\",\n    \"price\": \"{{ $json.price }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-email-teacher",
+      "name": "Email al profesor — nueva reserva",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $json.teacher_email }}\"],\n  \"subject\": \"Nueva solicitud de clase — confirmá en 24 hs\",\n  \"template_id\": \"E04\",\n  \"variables\": {\n    \"teacher_name\": \"{{ $json.teacher_name }}\",\n    \"student_name\": \"{{ $json.student_name }}\",\n    \"subject_name\": \"{{ $json.subject_name }}\",\n    \"scheduled_at\": \"{{ $json.scheduled_at }}\",\n    \"price\": \"{{ $json.price }}\",\n    \"dashboard_url\": \"{{ $env.APP_URL }}/app/teacher/dashboard\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-notif-student",
+      "name": "Notificación in-app — alumno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_notification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"p_user_id\": \"{{ $('Obtener datos del booking').item.json[0].students.user_id }}\",\n  \"p_type\": \"booking\",\n  \"p_title\": \"Reserva enviada\",\n  \"p_body\": \"Tu solicitud fue enviada a {{ $('Establecer variables').item.json.teacher_name }}. Confirmará en las próximas 24 hs.\",\n  \"p_data\": {\"booking_id\": \"{{ $('Webhook: booking creado').item.json.body.booking_id }}\"}\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w01-notif-teacher",
+      "name": "Notificación in-app — profesor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_notification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"p_user_id\": \"{{ $('Obtener datos del booking').item.json[0].teachers.user_id }}\",\n  \"p_type\": \"booking\",\n  \"p_title\": \"Nueva solicitud de clase\",\n  \"p_body\": \"{{ $('Establecer variables').item.json.student_name }} quiere una clase de {{ $('Establecer variables').item.json.subject_name }}. Tenés 24 hs para confirmar.\",\n  \"p_data\": {\"booking_id\": \"{{ $('Webhook: booking creado').item.json.body.booking_id }}\"}\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: booking creado": {
+      "main": [[{ "node": "Validar secreto", "type": "main", "index": 0 }]]
+    },
+    "Validar secreto": {
+      "main": [
+        [{ "node": "Obtener datos del booking", "type": "main", "index": 0 }],
+        [{ "node": "Secreto inválido — parar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener datos del booking": {
+      "main": [[{ "node": "Meet link manual — notificar profesor", "type": "main", "index": 0 }]]
+    },
+    "Meet link manual — notificar profesor": {
+      "main": [
+        [{ "node": "Email al alumno — reserva en proceso", "type": "main", "index": 0 }],
+        [{ "node": "Email al profesor — nueva reserva", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email al alumno — reserva en proceso": {
+      "main": [[{ "node": "Notificación in-app — alumno", "type": "main", "index": 0 }]]
+    },
+    "Email al profesor — nueva reserva": {
+      "main": [[{ "node": "Notificación in-app — profesor", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "bookings" }]
+}

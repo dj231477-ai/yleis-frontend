@@ -1,0 +1,150 @@
+{
+  "name": "W07 — auto-cancel",
+  "nodes": [
+    {
+      "id": "w07-cron",
+      "name": "Cron cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 * * * *" }]
+        }
+      }
+    },
+    {
+      "id": "w07-get-pending",
+      "name": "Buscar pending con +24h de antigüedad",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "eq.pending" },
+            { "name": "created_at", "value": "=lt.{{ $now.minus({hours: 24}).toISO() }}" },
+            {
+              "name": "select",
+              "value": "id,student_id,students(user_id,users(full_name,email)),teachers(users(full_name)),subjects(name),scheduled_at"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w07-loop",
+      "name": "Loop reservas a cancelar",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 300],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "w07-update-status",
+      "name": "Cancelar booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "id", "value": "=eq.{{ $json.id }}" }]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "{\"status\": \"cancelled_teacher\", \"cancellation_reason\": \"Auto-cancelado: el profesor no confirmó en 24 hs\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w07-email-student",
+      "name": "Email auto-cancelación al alumno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $('Loop reservas a cancelar').item.json.students.users.email }}\"],\n  \"subject\": \"Tu solicitud fue cancelada automáticamente\",\n  \"template_id\": \"E09\",\n  \"variables\": {\n    \"student_name\": \"{{ $('Loop reservas a cancelar').item.json.students.users.full_name }}\",\n    \"teacher_name\": \"{{ $('Loop reservas a cancelar').item.json.teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $('Loop reservas a cancelar').item.json.subjects.name }}\",\n    \"scheduled_at\": \"{{ $('Loop reservas a cancelar').item.json.scheduled_at }}\",\n    \"reason\": \"El profesor no confirmó la clase en el plazo de 24 horas.\",\n    \"catalog_url\": \"{{ $env.APP_URL }}/app/student/search\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w07-notif",
+      "name": "Notificación in-app al alumno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_notification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"p_user_id\": \"{{ $('Loop reservas a cancelar').item.json.students.user_id }}\",\n  \"p_type\": \"booking\",\n  \"p_title\": \"Reserva cancelada automáticamente\",\n  \"p_body\": \"El profesor no confirmó tu clase a tiempo. Podés buscar otro profesor.\",\n  \"p_data\": {\"booking_id\": \"{{ $('Loop reservas a cancelar').item.json.id }}\"}\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Cron cada hora": {
+      "main": [[{ "node": "Buscar pending con +24h de antigüedad", "type": "main", "index": 0 }]]
+    },
+    "Buscar pending con +24h de antigüedad": {
+      "main": [[{ "node": "Loop reservas a cancelar", "type": "main", "index": 0 }]]
+    },
+    "Loop reservas a cancelar": {
+      "main": [[{ "node": "Cancelar booking", "type": "main", "index": 0 }]]
+    },
+    "Cancelar booking": {
+      "main": [[{ "node": "Email auto-cancelación al alumno", "type": "main", "index": 0 }]]
+    },
+    "Email auto-cancelación al alumno": {
+      "main": [[{ "node": "Notificación in-app al alumno", "type": "main", "index": 0 }]]
+    },
+    "Notificación in-app al alumno": {
+      "main": [[{ "node": "Loop reservas a cancelar", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "auto-cancel" }]
+}

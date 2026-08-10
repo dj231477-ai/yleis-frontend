@@ -1,0 +1,255 @@
+{
+  "name": "W02 — payment-confirmed",
+  "nodes": [
+    {
+      "id": "w02-trigger",
+      "name": "Webhook: pago confirmado",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mp-payment-confirmed",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "w02-validate",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.SUPABASE_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w02-stop",
+      "name": "Parar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 460],
+      "parameters": {}
+    },
+    {
+      "id": "w02-verify-mp",
+      "name": "Verificar pago en MP API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.mercadopago.com/v1/payments/{{ $json.body.payload.data.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [{ "name": "Authorization", "value": "=Bearer {{ $env.MP_ACCESS_TOKEN }}" }]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w02-check-status",
+      "name": "¿Pago aprobado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "approved",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w02-update-payment",
+      "name": "Actualizar payment en DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/payments",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "mp_preference_id",
+              "value": "=eq.{{ $('Verificar pago en MP API').item.json.external_reference }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"status\": \"approved\",\n  \"mp_payment_id\": \"{{ $('Verificar pago en MP API').item.json.id }}\",\n  \"payment_method\": \"{{ $('Verificar pago en MP API').item.json.payment_method_id }}\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w02-update-booking",
+      "name": "Actualizar booking a paid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 380],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Actualizar payment en DB').item.json[0].booking_id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "{\"status\": \"paid\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w02-get-booking-detail",
+      "name": "Obtener detalle para email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Actualizar payment en DB').item.json[0].booking_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,scheduled_at,duration_min,price,subjects(name),teachers(users(full_name,email)),students(users(full_name,email))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w02-email-receipt",
+      "name": "Email recibo al alumno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $json[0].students.users.email }}\"],\n  \"subject\": \"Pago confirmado — tu clase está reservada\",\n  \"template_id\": \"E05\",\n  \"variables\": {\n    \"student_name\": \"{{ $json[0].students.users.full_name }}\",\n    \"teacher_name\": \"{{ $json[0].teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $json[0].subjects.name }}\",\n    \"scheduled_at\": \"{{ $json[0].scheduled_at }}\",\n    \"amount\": \"{{ $('Actualizar payment en DB').item.json[0].amount }}\",\n    \"platform_fee\": \"{{ $('Actualizar payment en DB').item.json[0].platform_fee }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w02-notif",
+      "name": "Notificación pago aprobado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_notification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"p_user_id\": \"{{ $('Obtener detalle para email').item.json[0].students.user_id }}\",\n  \"p_type\": \"payment\",\n  \"p_title\": \"Pago confirmado\",\n  \"p_body\": \"Tu pago fue aprobado. La clase con {{ $('Obtener detalle para email').item.json[0].teachers.users.full_name }} está confirmada.\",\n  \"p_data\": {\"booking_id\": \"{{ $('Actualizar payment en DB').item.json[0].booking_id }}\"}\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: pago confirmado": {
+      "main": [[{ "node": "Validar secreto", "type": "main", "index": 0 }]]
+    },
+    "Validar secreto": {
+      "main": [
+        [{ "node": "Verificar pago en MP API", "type": "main", "index": 0 }],
+        [{ "node": "Parar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Verificar pago en MP API": {
+      "main": [[{ "node": "¿Pago aprobado?", "type": "main", "index": 0 }]]
+    },
+    "¿Pago aprobado?": {
+      "main": [
+        [{ "node": "Actualizar payment en DB", "type": "main", "index": 0 }],
+        [{ "node": "Parar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Actualizar payment en DB": {
+      "main": [[{ "node": "Actualizar booking a paid", "type": "main", "index": 0 }]]
+    },
+    "Actualizar booking a paid": {
+      "main": [[{ "node": "Obtener detalle para email", "type": "main", "index": 0 }]]
+    },
+    "Obtener detalle para email": {
+      "main": [[{ "node": "Email recibo al alumno", "type": "main", "index": 0 }]]
+    },
+    "Email recibo al alumno": {
+      "main": [[{ "node": "Notificación pago aprobado", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "payments" }]
+}

@@ -53,5 +53,17 @@
       "*.config.mjs",
       "src/components/ui/ui/**"
     ]
-  }
+  },
+  "overrides": [
+    {
+      "include": ["supabase/functions/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsoleLog": "off"
+          }
+        }
+      }
+    }
+  ]
 }

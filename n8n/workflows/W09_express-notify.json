@@ -1,0 +1,159 @@
+{
+  "name": "W09 — express-notify",
+  "nodes": [
+    {
+      "id": "w09-trigger",
+      "name": "Webhook: profesor online",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "teacher-online",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "w09-validate",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.SUPABASE_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w09-stop",
+      "name": "Parar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 460],
+      "parameters": {}
+    },
+    {
+      "id": "w09-get-teacher",
+      "name": "Obtener perfil del profesor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/teachers",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.teacher_id }}" },
+            {
+              "name": "select",
+              "value": "id,user_id,users(full_name,avatar_url),teacher_subjects(subjects(name))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w09-get-students",
+      "name": "Obtener alumnos acticontigo para notificar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/users",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "role", "value": "eq.student" },
+            { "name": "select", "value": "id" },
+            { "name": "limit", "value": "100" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w09-loop-notif",
+      "name": "Loop notificar alumnos",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1120, 300],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "w09-notif",
+      "name": "Notificación express disponible",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_notification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"p_user_id\": \"{{ $json.id }}\",\n  \"p_type\": \"express\",\n  \"p_title\": \"Profesor disponible ahora\",\n  \"p_body\": \"{{ $('Obtener perfil del profesor').item.json[0].users.full_name }} está disponible para una clase express ahora.\",\n  \"p_data\": {\n    \"teacher_id\": \"{{ $('Webhook: profesor online').item.json.body.teacher_id }}\",\n    \"express_url\": \"{{ $env.APP_URL }}/express/{{ $('Webhook: profesor online').item.json.body.teacher_id }}\"\n  }\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: profesor online": {
+      "main": [[{ "node": "Validar secreto", "type": "main", "index": 0 }]]
+    },
+    "Validar secreto": {
+      "main": [
+        [{ "node": "Obtener perfil del profesor", "type": "main", "index": 0 }],
+        [{ "node": "Parar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener perfil del profesor": {
+      "main": [
+        [{ "node": "Obtener alumnos acticontigo para notificar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener alumnos acticontigo para notificar": {
+      "main": [[{ "node": "Loop notificar alumnos", "type": "main", "index": 0 }]]
+    },
+    "Loop notificar alumnos": {
+      "main": [[{ "node": "Notificación express disponible", "type": "main", "index": 0 }]]
+    },
+    "Notificación express disponible": {
+      "main": [[{ "node": "Loop notificar alumnos", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "express" }]
+}

@@ -1,0 +1,237 @@
+{
+  "name": "W06 — user-onboarding",
+  "nodes": [
+    {
+      "id": "w06-trigger",
+      "name": "Webhook: nuevo usuario",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "user-onboarding",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "w06-validate",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.SUPABASE_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w06-stop",
+      "name": "Parar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 460],
+      "parameters": {}
+    },
+    {
+      "id": "w06-switch-role",
+      "name": "Switch por rol",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.role }}",
+                    "rightValue": "student",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.role }}",
+                    "rightValue": "teacher",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w06-welcome-student",
+      "name": "Email bienvenida alumno",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 180],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <hola@yleis.co>\",\n  \"to\": [\"{{ $('Webhook: nuevo usuario').item.json.body.email }}\"],\n  \"subject\": \"¡Bienvenido/a a Yleis!\",\n  \"template_id\": \"E01\",\n  \"variables\": {\n    \"full_name\": \"{{ $('Webhook: nuevo usuario').item.json.body.full_name }}\",\n    \"catalog_url\": \"{{ $env.APP_URL }}/app/student/search\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w06-welcome-teacher",
+      "name": "Email bienvenida profesor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <hola@yleis.co>\",\n  \"to\": [\"{{ $('Webhook: nuevo usuario').item.json.body.email }}\"],\n  \"subject\": \"Bienvenido/a — completá tu perfil para empezar a dar clases\",\n  \"template_id\": \"E02\",\n  \"variables\": {\n    \"full_name\": \"{{ $('Webhook: nuevo usuario').item.json.body.full_name }}\",\n    \"profile_url\": \"{{ $env.APP_URL }}/app/profile\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w06-wait-1d",
+      "name": "Esperar 1 día",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1120, 420],
+      "parameters": {
+        "resume": "timeInterval",
+        "unit": "days",
+        "amount": 1
+      }
+    },
+    {
+      "id": "w06-check-profile",
+      "name": "¿Completó el perfil?",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/teachers",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "=eq.{{ $('Webhook: nuevo usuario').item.json.body.user_id }}"
+            },
+            { "name": "select", "value": "onboarding_step,headline,bio" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w06-profile-done",
+      "name": "¿Tiene headline y bio?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1560, 420],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json[0].headline }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w06-email-tips",
+      "name": "Email tips perfil incompleto",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 520],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <hola@yleis.co>\",\n  \"to\": [\"{{ $('Webhook: nuevo usuario').item.json.body.email }}\"],\n  \"subject\": \"¿Necesitás ayuda para completar tu perfil?\",\n  \"template_id\": \"E02\",\n  \"variables\": {\n    \"full_name\": \"{{ $('Webhook: nuevo usuario').item.json.body.full_name }}\",\n    \"profile_url\": \"{{ $env.APP_URL }}/app/profile\"\n  }\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: nuevo usuario": {
+      "main": [[{ "node": "Validar secreto", "type": "main", "index": 0 }]]
+    },
+    "Validar secreto": {
+      "main": [
+        [{ "node": "Switch por rol", "type": "main", "index": 0 }],
+        [{ "node": "Parar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Switch por rol": {
+      "main": [
+        [{ "node": "Email bienvenida alumno", "type": "main", "index": 0 }],
+        [{ "node": "Email bienvenida profesor", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email bienvenida profesor": {
+      "main": [[{ "node": "Esperar 1 día", "type": "main", "index": 0 }]]
+    },
+    "Esperar 1 día": {
+      "main": [[{ "node": "¿Completó el perfil?", "type": "main", "index": 0 }]]
+    },
+    "¿Completó el perfil?": {
+      "main": [[{ "node": "¿Tiene headline y bio?", "type": "main", "index": 0 }]]
+    },
+    "¿Tiene headline y bio?": {
+      "main": [[], [{ "node": "Email tips perfil incompleto", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "onboarding" }]
+}

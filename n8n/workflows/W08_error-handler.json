@@ -1,0 +1,69 @@
+{
+  "name": "W08 — error-handler",
+  "nodes": [
+    {
+      "id": "w08-trigger",
+      "name": "Error Trigger global",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "parameters": {}
+    },
+    {
+      "id": "w08-insert-task",
+      "name": "Registrar en admin_tasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/admin_tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"type\": \"workflow_error\",\n  \"description\": \"Error en workflow: {{ $json.workflow.name }}\",\n  \"data\": {\n    \"workflow_id\": \"{{ $json.workflow.id }}\",\n    \"workflow_name\": \"{{ $json.workflow.name }}\",\n    \"execution_id\": \"{{ $json.execution.id }}\",\n    \"error_message\": \"{{ $json.execution.error.message }}\",\n    \"error_stack\": \"{{ $json.execution.error.stack }}\",\n    \"last_node\": \"{{ $json.execution.lastNodeExecuted }}\",\n    \"timestamp\": \"{{ $now.toISO() }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w08-email-admin",
+      "name": "Email al admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis Sistema <sistema@yleis.co>\",\n  \"to\": [\"hola@yleis.co\"],\n  \"subject\": \"⚠️ Error en workflow: {{ $('Error Trigger global').item.json.workflow.name }}\",\n  \"html\": \"<h2>Error en workflow de n8n</h2><p><strong>Workflow:</strong> {{ $('Error Trigger global').item.json.workflow.name }}</p><p><strong>Error:</strong> {{ $('Error Trigger global').item.json.execution.error.message }}</p><p><strong>Último nodo:</strong> {{ $('Error Trigger global').item.json.execution.lastNodeExecuted }}</p><p><strong>Ejecución:</strong> {{ $('Error Trigger global').item.json.execution.id }}</p><p><strong>Timestamp:</strong> {{ $now.toISO() }}</p><p><a href='{{ $env.N8N_BASE_URL }}/execution/{{ $('Error Trigger global').item.json.execution.id }}'>Ver ejecución en n8n</a></p>\"\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger global": {
+      "main": [[{ "node": "Registrar en admin_tasks", "type": "main", "index": 0 }]]
+    },
+    "Registrar en admin_tasks": {
+      "main": [[{ "node": "Email al admin", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1", "errorWorkflow": "" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "monitoring" }]
+}

@@ -1,0 +1,236 @@
+{
+  "name": "W03 — reminders-cron",
+  "nodes": [
+    {
+      "id": "w03-cron",
+      "name": "Cron cada hora",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 * * * *" }]
+        }
+      }
+    },
+    {
+      "id": "w03-get-24h",
+      "name": "Buscar clases en ~24h sin recordatorio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "in.(confirmed,paid)" },
+            { "name": "reminder_24h_sent", "value": "eq.false" },
+            { "name": "scheduled_at", "value": "=gt.{{ $now.plus({hours: 23}).toISO() }}" },
+            { "name": "scheduled_at_lte", "value": "=lt.{{ $now.plus({hours: 25}).toISO() }}" },
+            {
+              "name": "select",
+              "value": "id,scheduled_at,duration_min,price,subjects(name),teachers(users(full_name,email)),students(users(full_name,email))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w03-loop-24h",
+      "name": "Loop recordatorios 24h",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 200],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "w03-email-24h",
+      "name": "Email recordatorio 24h",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $json.students.users.email }}\"],\n  \"subject\": \"Recordatorio: tu clase es mañana\",\n  \"template_id\": \"E06\",\n  \"variables\": {\n    \"student_name\": \"{{ $json.students.users.full_name }}\",\n    \"teacher_name\": \"{{ $json.teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $json.subjects.name }}\",\n    \"scheduled_at\": \"{{ $json.scheduled_at }}\",\n    \"meet_link\": \"{{ $json.meet_link }}\",\n    \"booking_url\": \"{{ $env.APP_URL }}/app/student/classes/{{ $json.id }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w03-mark-24h",
+      "name": "Marcar reminder_24h_sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Loop recordatorios 24h').item.json.id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "{\"reminder_24h_sent\": true}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w03-get-1h",
+      "name": "Buscar clases en ~1h sin recordatorio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 420],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "in.(confirmed,paid)" },
+            { "name": "reminder_1h_sent", "value": "eq.false" },
+            { "name": "scheduled_at", "value": "=gt.{{ $now.plus({minutes: 55}).toISO() }}" },
+            { "name": "scheduled_at_lte", "value": "=lt.{{ $now.plus({minutes: 65}).toISO() }}" },
+            {
+              "name": "select",
+              "value": "id,scheduled_at,meet_link,subjects(name),teachers(users(full_name,email)),students(users(full_name,email))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w03-loop-1h",
+      "name": "Loop recordatorios 1h",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [680, 420],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "w03-email-1h",
+      "name": "Email recordatorio 1h",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 420],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $json.students.users.email }}\"],\n  \"subject\": \"Tu clase empieza en 1 hora\",\n  \"template_id\": \"E07\",\n  \"variables\": {\n    \"student_name\": \"{{ $json.students.users.full_name }}\",\n    \"teacher_name\": \"{{ $json.teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $json.subjects.name }}\",\n    \"scheduled_at\": \"{{ $json.scheduled_at }}\",\n    \"meet_link\": \"{{ $json.meet_link }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w03-mark-1h",
+      "name": "Marcar reminder_1h_sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 420],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Loop recordatorios 1h').item.json.id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "{\"reminder_1h_sent\": true}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Cron cada hora": {
+      "main": [
+        [
+          { "node": "Buscar clases en ~24h sin recordatorio", "type": "main", "index": 0 },
+          { "node": "Buscar clases en ~1h sin recordatorio", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Buscar clases en ~24h sin recordatorio": {
+      "main": [[{ "node": "Loop recordatorios 24h", "type": "main", "index": 0 }]]
+    },
+    "Loop recordatorios 24h": {
+      "main": [[{ "node": "Email recordatorio 24h", "type": "main", "index": 0 }]]
+    },
+    "Email recordatorio 24h": {
+      "main": [[{ "node": "Marcar reminder_24h_sent", "type": "main", "index": 0 }]]
+    },
+    "Marcar reminder_24h_sent": {
+      "main": [[{ "node": "Loop recordatorios 24h", "type": "main", "index": 0 }]]
+    },
+    "Buscar clases en ~1h sin recordatorio": {
+      "main": [[{ "node": "Loop recordatorios 1h", "type": "main", "index": 0 }]]
+    },
+    "Loop recordatorios 1h": {
+      "main": [[{ "node": "Email recordatorio 1h", "type": "main", "index": 0 }]]
+    },
+    "Email recordatorio 1h": {
+      "main": [[{ "node": "Marcar reminder_1h_sent", "type": "main", "index": 0 }]]
+    },
+    "Marcar reminder_1h_sent": {
+      "main": [[{ "node": "Loop recordatorios 1h", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "reminders" }]
+}

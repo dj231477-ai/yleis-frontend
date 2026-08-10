@@ -1,0 +1,170 @@
+{
+  "name": "W05 — session-completed",
+  "nodes": [
+    {
+      "id": "w05-cron",
+      "name": "Cron cada 5 minutos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "*/5 * * * *" }]
+        }
+      }
+    },
+    {
+      "id": "w05-get-ended",
+      "name": "Buscar clases terminadas sin completar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "eq.paid" },
+            {
+              "name": "select",
+              "value": "id,scheduled_at,duration_min,teacher_id,teachers(id,total_hours_taught,user_id,users(full_name,email)),students(user_id,users(full_name,email)),subjects(name)"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w05-filter-ended",
+      "name": "Filtrar las que ya terminaron",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const now = new Date();\nreturn items.filter(item => {\n  const scheduled = new Date(item.json.scheduled_at);\n  const endTime = new Date(scheduled.getTime() + item.json.duration_min * 60 * 1000);\n  return endTime < now;\n});"
+      }
+    },
+    {
+      "id": "w05-loop",
+      "name": "Loop sesiones completadas",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [900, 300],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "w05-update-booking",
+      "name": "Marcar booking como completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "id", "value": "=eq.{{ $json.id }}" }]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "{\"status\": \"completed\"}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w05-update-hours",
+      "name": "Sumar horas al profesor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/teachers",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Loop sesiones completadas').item.json.teachers.id }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\"total_hours_taught\": {{ $('Loop sesiones completadas').item.json.teachers.total_hours_taught + ($('Loop sesiones completadas').item.json.duration_min / 60) }}}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w05-email-review",
+      "name": "Email solicitud de reseña",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $('Loop sesiones completadas').item.json.students.users.email }}\"],\n  \"subject\": \"¿Cómo estuvo tu clase?\",\n  \"template_id\": \"E10\",\n  \"variables\": {\n    \"student_name\": \"{{ $('Loop sesiones completadas').item.json.students.users.full_name }}\",\n    \"teacher_name\": \"{{ $('Loop sesiones completadas').item.json.teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $('Loop sesiones completadas').item.json.subjects.name }}\",\n    \"review_url\": \"{{ $env.APP_URL }}/app/student/classes/{{ $('Loop sesiones completadas').item.json.id }}\"\n  }\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Cron cada 5 minutos": {
+      "main": [[{ "node": "Buscar clases terminadas sin completar", "type": "main", "index": 0 }]]
+    },
+    "Buscar clases terminadas sin completar": {
+      "main": [[{ "node": "Filtrar las que ya terminaron", "type": "main", "index": 0 }]]
+    },
+    "Filtrar las que ya terminaron": {
+      "main": [[{ "node": "Loop sesiones completadas", "type": "main", "index": 0 }]]
+    },
+    "Loop sesiones completadas": {
+      "main": [
+        [
+          { "node": "Marcar booking como completed", "type": "main", "index": 0 },
+          { "node": "Sumar horas al profesor", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Marcar booking como completed": {
+      "main": [[{ "node": "Email solicitud de reseña", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "sessions" }]
+}

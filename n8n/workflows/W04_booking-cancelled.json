@@ -1,0 +1,233 @@
+{
+  "name": "W04 — booking-cancelled",
+  "nodes": [
+    {
+      "id": "w04-trigger",
+      "name": "Webhook: cancelación",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking-cancelled",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "w04-validate",
+      "name": "Validar secreto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.headers['x-webhook-secret'] }}",
+              "rightValue": "={{ $env.SUPABASE_WEBHOOK_SECRET }}",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w04-stop",
+      "name": "Parar",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [680, 460],
+      "parameters": {}
+    },
+    {
+      "id": "w04-check-refund",
+      "name": "¿Hay reembolso?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.refund_amount }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "w04-mp-refund",
+      "name": "Procesar reembolso en MP",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.mercadopago.com/v1/payments/{{ $json.body.mp_payment_id }}/refunds",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.MP_ACCESS_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Idempotency-Key", "value": "=refund-{{ $json.body.booking_id }}" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\"amount\": {{ $json.body.refund_amount }}}",
+        "options": { "retryOnFail": true, "maxTries": 3, "waitBetweenTries": 1000 }
+      }
+    },
+    {
+      "id": "w04-get-booking",
+      "name": "Obtener datos para email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "=eq.{{ $('Webhook: cancelación').item.json.body.booking_id }}"
+            },
+            {
+              "name": "select",
+              "value": "id,scheduled_at,subjects(name),teachers(users(full_name,email)),students(users(full_name,email))"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "w04-switch-refund",
+      "name": "¿Con o sin reembolso?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1340, 300],
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ $('Webhook: cancelación').item.json.body.refund_policy === 'none' ? 1 : 0 }}"
+      }
+    },
+    {
+      "id": "w04-email-with-refund",
+      "name": "Email cancelación con reembolso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 200],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $('Obtener datos para email').item.json[0].students.users.email }}\"],\n  \"subject\": \"Clase cancelada — tu reembolso está en camino\",\n  \"template_id\": \"E08\",\n  \"variables\": {\n    \"student_name\": \"{{ $('Obtener datos para email').item.json[0].students.users.full_name }}\",\n    \"teacher_name\": \"{{ $('Obtener datos para email').item.json[0].teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $('Obtener datos para email').item.json[0].subjects.name }}\",\n    \"scheduled_at\": \"{{ $('Obtener datos para email').item.json[0].scheduled_at }}\",\n    \"refund_amount\": \"{{ $('Webhook: cancelación').item.json.body.refund_amount }}\",\n    \"cancelled_by\": \"{{ $('Webhook: cancelación').item.json.body.cancelled_by }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w04-email-no-refund",
+      "name": "Email cancelación sin reembolso",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 400],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.APP_URL }}/api/emails/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-yleis-email-secret", "value": "={{ $env.EMAIL_WEBHOOK_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"from\": \"Yleis <noreply@yleis.co>\",\n  \"to\": [\"{{ $('Obtener datos para email').item.json[0].students.users.email }}\"],\n  \"subject\": \"Clase cancelada — política de cancelación aplicada\",\n  \"template_id\": \"E09\",\n  \"variables\": {\n    \"student_name\": \"{{ $('Obtener datos para email').item.json[0].students.users.full_name }}\",\n    \"teacher_name\": \"{{ $('Obtener datos para email').item.json[0].teachers.users.full_name }}\",\n    \"subject_name\": \"{{ $('Obtener datos para email').item.json[0].subjects.name }}\",\n    \"scheduled_at\": \"{{ $('Obtener datos para email').item.json[0].scheduled_at }}\"\n  }\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "w04-notif-cancel",
+      "name": "Notificación cancelación",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/create_notification",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"p_user_id\": \"{{ $('Obtener datos para email').item.json[0].students.user_id }}\",\n  \"p_type\": \"booking\",\n  \"p_title\": \"Clase cancelada\",\n  \"p_body\": \"Tu clase de {{ $('Obtener datos para email').item.json[0].subjects.name }} fue cancelada.\",\n  \"p_data\": {\"booking_id\": \"{{ $('Webhook: cancelación').item.json.body.booking_id }}\"}\n}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: cancelación": {
+      "main": [[{ "node": "Validar secreto", "type": "main", "index": 0 }]]
+    },
+    "Validar secreto": {
+      "main": [
+        [{ "node": "¿Hay reembolso?", "type": "main", "index": 0 }],
+        [{ "node": "Parar", "type": "main", "index": 0 }]
+      ]
+    },
+    "¿Hay reembolso?": {
+      "main": [
+        [{ "node": "Procesar reembolso en MP", "type": "main", "index": 0 }],
+        [{ "node": "Obtener datos para email", "type": "main", "index": 0 }]
+      ]
+    },
+    "Procesar reembolso en MP": {
+      "main": [[{ "node": "Obtener datos para email", "type": "main", "index": 0 }]]
+    },
+    "Obtener datos para email": {
+      "main": [[{ "node": "¿Con o sin reembolso?", "type": "main", "index": 0 }]]
+    },
+    "¿Con o sin reembolso?": {
+      "main": [
+        [{ "node": "Email cancelación con reembolso", "type": "main", "index": 0 }],
+        [{ "node": "Email cancelación sin reembolso", "type": "main", "index": 0 }]
+      ]
+    },
+    "Email cancelación con reembolso": {
+      "main": [[{ "node": "Notificación cancelación", "type": "main", "index": 0 }]]
+    },
+    "Email cancelación sin reembolso": {
+      "main": [[{ "node": "Notificación cancelación", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "staticData": null,
+  "tags": [{ "name": "yleis" }, { "name": "cancellations" }]
+}

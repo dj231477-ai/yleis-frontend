@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clase cancelada — reembolso en camino</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f5f5f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .wrapper { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+    .card { background: #ffffff; border-radius: 16px; padding: 48px 40px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .logo { font-size: 28px; font-weight: 700; color: #1a1a2e; margin-bottom: 32px; }
+    .logo span { color: #6c5ce7; }
+    h1 { font-size: 22px; font-weight: 700; color: #1a1a2e; margin: 0 0 8px; }
+    p { font-size: 16px; line-height: 1.6; color: #4a4a68; margin: 0 0 16px; }
+    .refund-box { background: #d4edda; border-radius: 12px; padding: 20px 24px; margin: 24px 0; }
+    .refund-box h3 { font-size: 16px; font-weight: 700; color: #155724; margin: 0 0 8px; }
+    .refund-box p { margin: 0; font-size: 15px; color: #155724; }
+    .details { background: #f8f8fc; border-radius: 12px; padding: 20px 24px; margin: 24px 0; }
+    .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #ebebf0; font-size: 15px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #9090a8; }
+    .detail-value { color: #1a1a2e; font-weight: 600; }
+    .btn { display: inline-block; background: #6c5ce7; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-size: 16px; font-weight: 600; margin-top: 16px; }
+    .footer { text-align: center; margin-top: 32px; font-size: 13px; color: #9090a8; }
+    .footer a { color: #6c5ce7; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="logo">Y<span>leis</span></div>
+      <h1>Clase cancelada</h1>
+      <p>Hola {{student_name}}, tu clase de <strong>{{subject_name}}</strong> fue cancelada.</p>
+
+      <div class="refund-box">
+        <h3>💰 Reembolso en proceso</h3>
+        <p>Se acreditarán <strong>${{refund_amount}} COP</strong> a tu método de pago original en los próximos 3 a 10 días hábiles.</p>
+      </div>
+
+      <div class="details">
+        <div class="detail-row">
+          <span class="detail-label">Materia</span>
+          <span class="detail-value">{{subject_name}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Profesor/a</span>
+          <span class="detail-value">{{teacher_name}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Fecha cancelada</span>
+          <span class="detail-value">{{scheduled_at}}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Cancelado por</span>
+          <span class="detail-value">{{cancelled_by}}</span>
+        </div>
+      </div>
+
+      <p>Podés reservar una clase con otro profesor cuando quieras.</p>
+      <a href="https://yleis.co/app/student/search" class="btn">Buscar otro profesor →</a>
+    </div>
+    <div class="footer">
+      <p>© 2025 Yleis — <a href="https://yleis.co">yleis.co</a></p>
+    </div>
+  </div>
+</body>
+</html>

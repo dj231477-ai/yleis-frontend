@@ -22,7 +22,14 @@ yarn-error.log*
 
 # Local env
 .env*.local
+.env
+*.key
+service-account.json
 /tests/postman/environment.local.json
+
+# Supabase CLI (link/state local, se genera por proyecto)
+supabase/.branches/
+supabase/.temp/
 
 # Playwright
 /test-results/
