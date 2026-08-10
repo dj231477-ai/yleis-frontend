@@ -1,4 +1,5 @@
 import { ClassChat } from "@/components/custom/chat/ClassChat";
+import { CancelBookingButton } from "@/components/custom/classes/CancelBookingButton";
 import { createClient } from "@/lib/supabase/server";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
@@ -176,6 +177,13 @@ export default async function StudentClassDetailPage({
             )}
           </div>
         </div>
+
+        {/* Cancelar — disponible hasta que el profesor introduzca el código de inicio */}
+        {["pending_teacher", "pending", "confirmed", "paid"].includes(booking.status as string) && (
+          <div className="mb-6">
+            <CancelBookingButton bookingId={bookingId} />
+          </div>
+        )}
 
         {/* Confirmation code — visible only to student when booking is confirmed/paid/in_progress */}
         {booking.confirmation_code && ["confirmed", "paid"].includes(booking.status as string) && (

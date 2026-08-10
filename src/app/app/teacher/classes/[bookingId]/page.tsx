@@ -1,4 +1,5 @@
 import { ClassChat } from "@/components/custom/chat/ClassChat";
+import { CancelBookingButton } from "@/components/custom/classes/CancelBookingButton";
 import { StartClassButton } from "@/components/custom/teacher/StartClassButton";
 import { createClient } from "@/lib/supabase/server";
 import { getTeacherProfile } from "@/services/teachers";
@@ -185,6 +186,13 @@ export default async function TeacherClassDetailPage({
               Pídele el código al estudiante e introdúcelo para marcar la clase como iniciada.
             </p>
             <StartClassButton bookingId={bookingId} />
+          </div>
+        )}
+
+        {/* Cancelar — disponible hasta que se introduzca el código de inicio */}
+        {["confirmed", "paid"].includes(booking.status as string) && (
+          <div className="mb-6">
+            <CancelBookingButton bookingId={bookingId} />
           </div>
         )}
 

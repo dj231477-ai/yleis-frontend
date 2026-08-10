@@ -178,3 +178,79 @@ test.describe("Student booking — without package balance", () => {
     await expect(page.getByRole("link", { name: "Comprar un paquete" })).toBeVisible();
   });
 });
+
+async function fetchActiveMembershipHours(accessToken: string): Promise<number> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/memberships?status=eq.active&select=remaining_hours&order=updated_at.desc&limit=1`,
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` } }
+  );
+  const [row] = await res.json();
+  return Number(row?.remaining_hours ?? 0);
+}
+
+async function fetchBookingStatus(accessToken: string, bookingId: string): Promise<string> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/bookings?id=eq.${bookingId}&select=status`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` },
+  });
+  const [row] = await res.json();
+  return row?.status;
+}
+
+test.describe("Booking cancellation", () => {
+  test.use({ storageState: "tests/e2e/.auth/student.json" });
+
+  test.beforeEach(async () => {
+    await ensureTeacherIsVerified();
+    const token = await studentAccessToken();
+    await cancelExistingPendingBookings(token);
+    await grantTestPackageHours(token, 5);
+  });
+
+  test("a confirmed class stays cancellable up until the start code is entered, and hours are refunded", async ({
+    page,
+    browser,
+  }) => {
+    // 1. El estudiante solicita la clase (descuenta 1 hora del paquete)
+    await page.goto(`/app/student/booking/${TEACHER_ID}`);
+    await expect(page.getByRole("heading", { name: "Reservar clase" })).toBeVisible();
+    await page.locator("select").first().selectOption({ label: "Inglés" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await page.locator("select").nth(1).selectOption("10:00");
+    await page.getByRole("button", { name: "1 hora" }).click();
+    await page.getByRole("button", { name: "Solicitar clase" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
+    const rawBookingId = new URL(page.url()).searchParams.get("id");
+    expect(rawBookingId).toBeTruthy();
+    const bookingId = rawBookingId as string;
+
+    const studentToken = await studentAccessToken();
+    const hoursAfterBooking = await fetchActiveMembershipHours(studentToken);
+
+    // 2. El profesor confirma la reserva (vía su propia sesión autenticada,
+    // sin pasar por la UI para no depender de layout/orden de la lista de pendientes)
+    const teacherContext = await browser.newContext({
+      storageState: "tests/e2e/.auth/teacher.json",
+    });
+    const acceptRes = await teacherContext.request.post(`/api/bookings/${bookingId}/accept`);
+    expect(acceptRes.ok()).toBeTruthy();
+    await teacherContext.close();
+
+    expect(await fetchBookingStatus(studentToken, bookingId)).toBe("confirmed");
+
+    // 3. El estudiante cancela desde el detalle de la clase confirmada —
+    // antes de que el profesor introduzca el código de inicio
+    await page.goto(`/app/student/classes/${bookingId}`);
+    await expect(page.getByRole("button", { name: "Cancelar clase" })).toBeVisible();
+    await page.getByRole("button", { name: "Cancelar clase" }).click();
+    await page.getByRole("button", { name: "Sí, cancelar" }).click();
+
+    // La página de detalle redirige a la lista una vez que el booking deja de
+    // estar "activo" (ver activeStatuses en student/classes/[bookingId]/page.tsx)
+    await page.waitForURL(/\/app\/student\/classes$/, { timeout: 10_000 });
+    expect(await fetchBookingStatus(studentToken, bookingId)).toBe("cancelled_student");
+
+    // 4. La hora descontada vuelve al saldo del paquete
+    const hoursAfterCancel = await fetchActiveMembershipHours(studentToken);
+    expect(hoursAfterCancel).toBe(hoursAfterBooking + 1);
+  });
+});
