@@ -186,6 +186,10 @@ Completado:
 - [x] Sidebar unificado con Subframe
 - [x] Deploy en Vercel - yleis.co
 
+- [x] Emails transaccionales disparados directo desde las rutas (sin depender de n8n) - bienvenida, solicitud de reserva, recibo de pago, cancelacion con/sin reembolso (2026-08-09)
+- [x] Hardening de seguridad Supabase: RPCs SECURITY DEFINER que no verificaban auth.uid() internamente (accept_express_session, get_active_plan, process_teacher_verification, create_notification) - cerrado via REVOKE + checks internos (2026-08-09/10, migraciones 029-030)
+- [x] activate_membership ya no es explotable via RPC directo - patron de grant token de un solo uso, emitido solo tras verificar el pago real con MP server-side (2026-08-10, migracion 031)
+
 Pendiente:
 
 - [x] Infraestructura Cal.com en calendario - pendiente URL/config externa
@@ -193,6 +197,11 @@ Pendiente:
 - [ ] DNS yleis.co -> Vercel
 - [x] Infraestructura emails con Resend - pendiente RESEND_API_KEY
 - [x] n8n workflows preparados para endpoint interno de emails - pendiente activacion/config
+- [ ] Recordatorios 24h/1h y email post-clase (review-request) - son time-based, necesitan un scheduler (Vercel Cron o activar n8n); hoy no se disparan
+- [ ] Reembolso REAL en Mercado Pago al cancelar - cancel-booking marca payments.status='refunded' en la fila pero no llama la API de refunds de MP; ese forward sigue atado a que n8n este activo
+- [ ] 7 vistas SECURITY DEFINER (teacher_earnings_detail, teacher_dashboard_summary, teacher_public_catalog, teacher_public_profile, student_upcoming_bookings, student_booking_history, teacher_pending_bookings) - flageadas por el linter de seguridad de Supabase, revisar caso por caso antes de cambiar a SECURITY INVOKER (podria romper acceso publico a perfiles)
+- [ ] Supabase Auth: leaked password protection y MFA insuficiente - config del dashboard/Management API, no SQL
+- [ ] tree_sitter_sql no instalado bloquea el parseo de las 29 migraciones .sql por la herramienta graphify (no bloquea el producto, solo el analisis de codigo)
 
 ---
 

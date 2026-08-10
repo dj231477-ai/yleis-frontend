@@ -1,4 +1,4 @@
-﻿export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   // Allows to automatically instantiate createClient with right options
@@ -6,36 +6,45 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5";
   };
-  graphql_public: {
-    Tables: {
-      [_ in never]: never;
-    };
-    Views: {
-      [_ in never]: never;
-    };
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json;
-          operationName?: string;
-          query?: string;
-          variables?: Json;
-        };
-        Returns: Json;
-      };
-    };
-    Enums: {
-      [_ in never]: never;
-    };
-    CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
   public: {
     Tables: {
+      admin_tasks: {
+        Row: {
+          created_at: string;
+          data: Json;
+          description: string;
+          id: string;
+          resolved_at: string | null;
+          status: string;
+          type: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          data?: Json;
+          description: string;
+          id?: string;
+          resolved_at?: string | null;
+          status?: string;
+          type: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          data?: Json;
+          description?: string;
+          id?: string;
+          resolved_at?: string | null;
+          status?: string;
+          type?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       bookings: {
         Row: {
           cancellation_reason: string | null;
+          confirmation_code: string | null;
           created_at: string;
           duration_min: number;
           id: string;
@@ -54,6 +63,7 @@ export type Database = {
         };
         Insert: {
           cancellation_reason?: string | null;
+          confirmation_code?: string | null;
           created_at?: string;
           duration_min: number;
           id?: string;
@@ -72,6 +82,7 @@ export type Database = {
         };
         Update: {
           cancellation_reason?: string | null;
+          confirmation_code?: string | null;
           created_at?: string;
           duration_min?: number;
           id?: string;
@@ -243,44 +254,56 @@ export type Database = {
       express_sessions: {
         Row: {
           created_at: string;
+          description: string | null;
           duration_min: number | null;
           ended_at: string | null;
+          expires_at: string | null;
           id: string;
           meet_link: string | null;
           price: number | null;
+          price_max: number | null;
+          price_min: number | null;
           started_at: string | null;
           status: string;
           student_id: string;
           subject_id: string | null;
-          teacher_id: string;
+          teacher_id: string | null;
           updated_at: string;
         };
         Insert: {
           created_at?: string;
+          description?: string | null;
           duration_min?: number | null;
           ended_at?: string | null;
+          expires_at?: string | null;
           id?: string;
           meet_link?: string | null;
           price?: number | null;
+          price_max?: number | null;
+          price_min?: number | null;
           started_at?: string | null;
           status?: string;
           student_id: string;
           subject_id?: string | null;
-          teacher_id: string;
+          teacher_id?: string | null;
           updated_at?: string;
         };
         Update: {
           created_at?: string;
+          description?: string | null;
           duration_min?: number | null;
           ended_at?: string | null;
+          expires_at?: string | null;
           id?: string;
           meet_link?: string | null;
           price?: number | null;
+          price_max?: number | null;
+          price_min?: number | null;
           started_at?: string | null;
           status?: string;
           student_id?: string;
           subject_id?: string | null;
-          teacher_id?: string;
+          teacher_id?: string | null;
           updated_at?: string;
         };
         Relationships: [
@@ -335,8 +358,64 @@ export type Database = {
           },
         ];
       };
+      membership_activation_grants: {
+        Row: {
+          created_at: string;
+          expires_at: string;
+          id: string;
+          mp_payment_id: string;
+          plan_slug: string;
+          student_user_id: string;
+          token: string;
+          used: boolean;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          mp_payment_id: string;
+          plan_slug: string;
+          student_user_id: string;
+          token?: string;
+          used?: boolean;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          mp_payment_id?: string;
+          plan_slug?: string;
+          student_user_id?: string;
+          token?: string;
+          used?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "membership_activation_grants_student_user_id_fkey";
+            columns: ["student_user_id"];
+            isOneToOne: false;
+            referencedRelation: "teacher_public_catalog";
+            referencedColumns: ["user_id"];
+          },
+          {
+            foreignKeyName: "membership_activation_grants_student_user_id_fkey";
+            columns: ["student_user_id"];
+            isOneToOne: false;
+            referencedRelation: "teacher_public_profile";
+            referencedColumns: ["user_id"];
+          },
+          {
+            foreignKeyName: "membership_activation_grants_student_user_id_fkey";
+            columns: ["student_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       membership_plans: {
         Row: {
+          category: string | null;
           classes_per_month: number | null;
           created_at: string;
           currency: string;
@@ -354,6 +433,7 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          category?: string | null;
           classes_per_month?: number | null;
           created_at?: string;
           currency?: string;
@@ -371,6 +451,7 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          category?: string | null;
           classes_per_month?: number | null;
           created_at?: string;
           currency?: string;
@@ -1398,7 +1479,19 @@ export type Database = {
       };
     };
     Functions: {
+      accept_express_session: {
+        Args: { p_session_id: string; p_teacher_user_id: string };
+        Returns: Json;
+      };
       activate_membership: {
+        Args: {
+          p_grant_token: string;
+          p_mp_payment_id: string;
+          p_plan_slug: string;
+        };
+        Returns: string;
+      };
+      create_membership_activation_grant: {
         Args: { p_mp_payment_id: string; p_plan_slug: string };
         Returns: string;
       };
@@ -1411,6 +1504,16 @@ export type Database = {
           p_user_id: string;
         };
         Returns: undefined;
+      };
+      create_scheduled_booking: {
+        Args: {
+          p_duration_min: number;
+          p_notes?: string;
+          p_scheduled_at: string;
+          p_subject_id: string;
+          p_teacher_id: string;
+        };
+        Returns: string;
       };
       get_active_plan: {
         Args: { p_user_id: string };
@@ -1438,7 +1541,6 @@ export type Database = {
           slot_start: string;
         }[];
       };
-      get_my_role: { Args: never; Returns: string };
       get_or_create_conversation: {
         Args: { p_booking_id: string };
         Returns: string;
@@ -1453,6 +1555,10 @@ export type Database = {
           p_teacher_id: string;
         };
         Returns: string;
+      };
+      restore_booking_class: {
+        Args: { p_booking_id: string };
+        Returns: undefined;
       };
     };
     Enums: {
@@ -1580,9 +1686,6 @@ export type CompositeTypes<
     : never;
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },
