@@ -109,7 +109,11 @@ export function ClassChat({
     };
   }, [conversationId, currentUserId, supabase]);
 
-  const canSend = isActive && chatEnabled;
+  // conversationId puede tardar en resolver (RPC async) — sin este chequeo,
+  // el input queda habilitado antes de tiempo y un envío rápido se descarta
+  // en silencio porque handleSend corta si conversationId todavía es null.
+  const canSend = isActive && chatEnabled && conversationId !== null;
+  const stillLoading = isActive && chatEnabled && conversationId === null && !initError;
 
   async function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
@@ -117,12 +121,24 @@ export function ClassChat({
     if (!text || !canSend || !conversationId || sending) return;
     setSending(true);
     setBody("");
+    // Eco local — no depender solo de Realtime para que el propio remitente
+    // vea su mensaje de inmediato. El handler de Realtime ya deduplica por id.
     // biome-ignore lint/suspicious/noExplicitAny: messages not in typed schema
-    await (supabase as any).from("messages").insert({
-      conversation_id: conversationId,
-      sender_id: currentUserId,
-      body: text,
-    });
+    const { data: inserted } = await (supabase as any)
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_id: currentUserId,
+        body: text,
+      })
+      .select("id, conversation_id, sender_id, body, is_read, created_at")
+      .single();
+    if (inserted) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === inserted.id)) return prev;
+        return [...prev, inserted as Message];
+      });
+    }
     setSending(false);
     inputRef.current?.focus();
   }
@@ -202,7 +218,11 @@ export function ClassChat({
           <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5">
             <FeatherLock className="h-4 w-4 shrink-0 text-neutral-400" />
             <p className="text-sm text-neutral-400">
-              {!chatEnabled ? "Chat no disponible aún" : "Chat de solo lectura"}
+              {stillLoading
+                ? "Cargando chat…"
+                : !chatEnabled
+                  ? "Chat no disponible aún"
+                  : "Chat de solo lectura"}
             </p>
           </div>
         ) : (

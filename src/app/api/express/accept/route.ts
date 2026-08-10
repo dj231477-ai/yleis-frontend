@@ -36,6 +36,13 @@ export async function POST(req: Request) {
     );
   }
 
+  if (res.error === "TIME_CONFLICT") {
+    return NextResponse.json(
+      { error: "Ya tienes otra clase justo ahora. Termínala antes de aceptar esta solicitud." },
+      { status: 409 }
+    );
+  }
+
   if (!res.booking_id) {
     return NextResponse.json({ error: "No se pudo crear la clase" }, { status: 500 });
   }

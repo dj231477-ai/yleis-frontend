@@ -22,7 +22,7 @@ export async function POST(_req: Request, { params }: { params: Params }) {
   // biome-ignore lint/suspicious/noExplicitAny: tabla no tipada
   const { data: booking } = await (supabase as any)
     .from("bookings")
-    .select("id, status")
+    .select("id, status, scheduled_at, scheduled_end_at")
     .eq("id", id)
     .eq("teacher_id", teacher.id)
     .eq("status", "in_progress")
@@ -32,10 +32,30 @@ export async function POST(_req: Request, { params }: { params: Params }) {
     return NextResponse.json({ error: "Clase no encontrada o no está en curso" }, { status: 404 });
   }
 
+  const now = new Date();
+  // Si se finaliza antes de la hora contratada, acortar scheduled_end_at a
+  // ahora — si no, el rango original sigue "ocupando" el calendario del
+  // profesor hasta su fin planeado y bloquea nuevas reservas (constraint
+  // no_overlapping_bookings no distingue completed de una clase en curso real).
+  // Nunca por debajo de scheduled_at: si la clase se marca in_progress/completed
+  // fuera de su fecha agendada (p. ej. iniciar y terminar el mismo día para una
+  // clase programada semanas después), scheduled_end_at < scheduled_at rompe la
+  // construcción del tstzrange usado por esa misma constraint.
+  const scheduledAt = new Date(booking.scheduled_at);
+  const scheduledEndAtOriginal = new Date(booking.scheduled_end_at);
+  const scheduledEndAt =
+    now < scheduledEndAtOriginal
+      ? new Date(Math.max(now.getTime(), scheduledAt.getTime())).toISOString()
+      : booking.scheduled_end_at;
+
   // biome-ignore lint/suspicious/noExplicitAny: tabla no tipada
   const { error } = await (supabase as any)
     .from("bookings")
-    .update({ status: "completed", updated_at: new Date().toISOString() })
+    .update({
+      status: "completed",
+      scheduled_end_at: scheduledEndAt,
+      updated_at: now.toISOString(),
+    })
     .eq("id", id)
     .eq("teacher_id", teacher.id);
 

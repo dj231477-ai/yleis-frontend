@@ -301,8 +301,24 @@ test.describe("Booking lifecycle — start and finish", () => {
     expect(startRes.ok()).toBeTruthy();
     expect(await fetchBookingStatus(studentToken, bookingId)).toBe("in_progress");
 
-    // 4. El profesor intenta finalizar antes de tiempo — debe ver la advertencia
     const teacherPage = await teacherContext.newPage();
+
+    // 3.5. El chat de clase debe cargar y permitir enviar mensajes con la clase
+    // en curso (bug real: get_or_create_conversation() rechazaba con
+    // "booking_not_active" cualquier estado que no fuera confirmed/paid)
+    await teacherPage.goto(`/app/teacher/classes/${bookingId}`);
+    await expect(teacherPage.getByText("No se pudo cargar el chat")).not.toBeVisible();
+    const teacherChatInput = teacherPage.getByPlaceholder("Escribe un mensaje…");
+    await expect(teacherChatInput).toBeVisible({ timeout: 10_000 });
+    await teacherChatInput.fill("Hola, ¿ya estás listo?");
+    await teacherChatInput.press("Enter");
+    await expect(teacherPage.getByText("Hola, ¿ya estás listo?")).toBeVisible();
+
+    await page.goto(`/app/student/classes/${bookingId}`);
+    await expect(page.getByText("No se pudo cargar el chat")).not.toBeVisible();
+    await expect(page.getByText("Hola, ¿ya estás listo?")).toBeVisible({ timeout: 10_000 });
+
+    // 4. El profesor intenta finalizar antes de tiempo — debe ver la advertencia
     await teacherPage.goto(`/app/teacher/classes/${bookingId}`);
     await teacherPage.getByRole("button", { name: "Finalizar clase" }).click();
     await expect(

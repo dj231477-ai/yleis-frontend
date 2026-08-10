@@ -31,6 +31,7 @@ export function ExpressSection({ teacherId }: Props) {
   const router = useRouter();
   const [requests, setRequests] = useState<ExpressRequest[]>([]);
   const [accepting, setAccepting] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchRequests = useCallback(async () => {
@@ -50,6 +51,7 @@ export function ExpressSection({ teacherId }: Props) {
 
   async function handleAccept(sessionId: string) {
     setAccepting(sessionId);
+    setError(null);
     const res = await fetch("/api/express/accept", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,7 +64,8 @@ export function ExpressSection({ teacherId }: Props) {
     if (res.ok && json.bookingId) {
       router.push(`/app/teacher/classes/${json.bookingId}`);
     } else {
-      // Sesión ya tomada — refrescar la lista
+      setError(json.error ?? "No se pudo aceptar la solicitud. Intenta de nuevo.");
+      // Sesión ya tomada, o ya no disponible — refrescar la lista
       void fetchRequests();
     }
     setAccepting(null);
@@ -85,6 +88,12 @@ export function ExpressSection({ teacherId }: Props) {
         </div>
         <IconWithBackground variant="brand" size="small" icon={<FeatherZap />} square />
       </div>
+
+      {error && (
+        <p className="mb-3 rounded-lg border border-error-200 bg-error-50 px-3 py-2 text-xs text-error-700">
+          {error}
+        </p>
+      )}
 
       {requests.length === 0 ? (
         <p className="rounded-lg border border-dashed border-neutral-200 p-4 text-center text-sm text-neutral-400">
