@@ -245,7 +245,7 @@ function Step2({
       </div>
 
       <div>
-        <FieldLabel required>Tarifa por hora (ARS)</FieldLabel>
+        <FieldLabel required>Tarifa por hora (COP)</FieldLabel>
         <div className="relative mt-1.5">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-neutral-400">
             $
@@ -253,15 +253,15 @@ function Step2({
           <input
             id="hourly_rate"
             type="number"
-            min={500}
-            step={100}
+            min={20000}
+            step={1000}
             value={data.hourly_rate}
             onChange={(e) => onChange("hourly_rate", e.target.value)}
-            placeholder="2500"
+            placeholder="50000"
             className="block w-full rounded-lg border border-neutral-300 bg-white py-2.5 pl-7 pr-3 text-sm text-neutral-900 placeholder-neutral-400 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20"
           />
         </div>
-        <p className="mt-1 text-xs text-neutral-400">Mínimo $500 ARS</p>
+        <p className="mt-1 text-xs text-neutral-400">Minimo $20.000 COP</p>
       </div>
 
       <div>
@@ -418,7 +418,7 @@ function Step3({
             <span className="font-medium">Idiomas:</span> {data.languages.join(", ") || "—"}
           </p>
           <p>
-            <span className="font-medium">Tarifa:</span> ${data.hourly_rate || "—"} ARS/hora
+            <span className="font-medium">Tarifa:</span> ${data.hourly_rate || "—"} COP/hora
           </p>
           <p>
             <span className="font-medium">Documentos:</span> {data.files.length} archivo
@@ -458,7 +458,7 @@ export function OnboardingForm({ userId, teacher }: Props) {
     if (step === 2)
       return (
         formData.hourly_rate !== "" &&
-        Number(formData.hourly_rate) >= 500 &&
+        Number(formData.hourly_rate) >= 20000 &&
         formData.languages.length > 0
       );
     return true;

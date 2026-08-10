@@ -33,7 +33,7 @@ function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
-function formatARS(amount: number) {
+function formatCOP(amount: number) {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
@@ -77,7 +77,7 @@ function PendingBookingRow({ booking }: { booking: PendingBooking }) {
           <p className="text-xs text-neutral-500">{booking.subject_name}</p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <span className="text-sm font-medium text-neutral-700">{formatARS(booking.price)}</span>
+          <span className="text-sm font-medium text-neutral-700">{formatCOP(booking.price)}</span>
           <Badge variant={isPlanBased ? "brand" : "neutral"} className="text-[10px]">
             {isPlanBased ? "Plan" : "Pago directo"}
           </Badge>
@@ -224,7 +224,7 @@ export default async function TeacherDashboardPage() {
               />
             </div>
             <p className="text-3xl font-bold text-neutral-900">
-              {formatARS(data.monthly_earnings_teacher)}
+              {formatCOP(data.monthly_earnings_teacher)}
             </p>
             <p className="mt-1 text-xs text-neutral-400 capitalize">{currentMonth}</p>
             <div className="mt-3 rounded-lg bg-neutral-50 border border-neutral-100 px-3 py-2">

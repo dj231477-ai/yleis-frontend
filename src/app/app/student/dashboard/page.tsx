@@ -119,7 +119,7 @@ function EmptyClassCard() {
   );
 }
 
-function BookingRow({ booking }: { booking: BookingRow }) {
+function BookingHistoryRow({ booking }: { booking: BookingRow }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-4 hover:bg-neutral-50 transition-colors">
       <Avatar image={booking.teacher_avatar ?? undefined} size="medium" variant="brand">
@@ -252,7 +252,7 @@ export default async function StudentDashboardPage() {
             {data.active_bookings.length > 0 ? (
               <div className="flex flex-col gap-2">
                 {data.active_bookings.map((b) => (
-                  <BookingRow key={b.id} booking={b} />
+                  <BookingHistoryRow key={b.id} booking={b} />
                 ))}
               </div>
             ) : (

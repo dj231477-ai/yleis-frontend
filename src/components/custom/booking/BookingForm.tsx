@@ -3,7 +3,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { createBooking } from "@/services/bookings";
 import { Button } from "@/ui/components/Button";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 type Subject = { id: string; name: string; category: string | null };
@@ -39,7 +38,6 @@ function formatCOP(amount: number) {
 }
 
 export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Props) {
-  const router = useRouter();
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? "");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");

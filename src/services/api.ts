@@ -1,5 +1,5 @@
-// Base API client — swap BASE_URL to point at Django REST Framework when ready.
-// All service files import from here, so the switch is one-line.
+// Base API client for internal Next.js API Routes.
+// Supabase access should stay in dedicated Supabase services/helpers.
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
@@ -16,8 +16,6 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     method,
     headers: {
       "Content-Type": "application/json",
-      // TODO: add Authorization header once Django JWT is ready
-      // Authorization: `Bearer ${getToken()}`,
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,

@@ -137,8 +137,8 @@ export default function HelpPage() {
         <Section title="¿Necesitas más ayuda?">
           <p className="text-sm text-neutral-600 leading-relaxed">
             Si tienes problemas o preguntas que no están aquí, escríbenos directamente a{" "}
-            <a href="mailto:hola@yleis.com" className="font-medium text-brand-600 hover:underline">
-              hola@yleis.com
+            <a href="mailto:hola@yleis.co" className="font-medium text-brand-600 hover:underline">
+              hola@yleis.co
             </a>
             . Respondemos en menos de 24 horas.
           </p>

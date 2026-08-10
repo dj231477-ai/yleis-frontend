@@ -106,7 +106,7 @@ export function TeacherProfileForm({ headline, bio, hourlyRate, languages }: Pro
 
       {/* Tarifa */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-neutral-600">Tarifa por hora (ARS)</label>
+        <label className="text-xs font-medium text-neutral-600">Tarifa por hora (COP)</label>
         <div className="flex items-center gap-2">
           <span className="text-sm text-neutral-500">$</span>
           <input
@@ -115,10 +115,10 @@ export function TeacherProfileForm({ headline, bio, hourlyRate, languages }: Pro
             onChange={(e) => setRateVal(e.target.value)}
             min={0}
             step={100}
-            placeholder="5000"
+            placeholder="50000"
             className="w-40 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 transition-colors"
           />
-          <span className="text-xs text-neutral-400">ARS / hora</span>
+          <span className="text-xs text-neutral-400">COP / hora</span>
         </div>
       </div>
 

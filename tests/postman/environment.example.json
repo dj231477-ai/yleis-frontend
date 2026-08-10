@@ -1,0 +1,8 @@
+{
+  "name": "yleis (example — copy to environment.local.json and fill in)",
+  "values": [
+    { "key": "SUPABASE_URL", "value": "https://[ref].supabase.co", "enabled": true },
+    { "key": "SUPABASE_ANON_KEY", "value": "", "enabled": true },
+    { "key": "APP_URL", "value": "https://main.yleis.co", "enabled": true }
+  ]
+}

@@ -22,6 +22,14 @@ yarn-error.log*
 
 # Local env
 .env*.local
+/tests/postman/environment.local.json
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/tests/e2e/.auth/
 
 # TypeScript
 *.tsbuildinfo

@@ -1,0 +1,299 @@
+{
+  "info": {
+    "name": "Yleis — API Security",
+    "description": "Checks que ninguna Edge Function ni ruta de pago de Next.js acepte requests sin autenticación/validación válida. Traducido de scripts/test-all-webhooks.sh a Newman para poder correrlo en CI.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "{{SUPABASE_URL}}/functions/v1" },
+    { "key": "anon_key", "value": "{{SUPABASE_ANON_KEY}}" },
+    { "key": "app_url", "value": "{{APP_URL}}" }
+  ],
+  "item": [
+    {
+      "name": "Edge Functions",
+      "item": [
+        {
+          "name": "verify-teacher-slot — sin JWT → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"teacher_id\":\"test\",\"scheduled_at\":\"2099-01-01T10:00:00Z\",\"duration_min\":60}"
+            },
+            "url": {
+              "raw": "{{base_url}}/verify-teacher-slot",
+              "host": ["{{base_url}}"],
+              "path": ["verify-teacher-slot"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "mp-webhook — firma HMAC inválida → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" },
+              { "key": "x-signature", "value": "ts=1234,v1=firma_invalida_abc123" },
+              { "key": "x-request-id", "value": "test-req-id" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"payment.created\",\"data\":{\"id\":\"test123\"}}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mp-webhook?data.id=test123",
+              "host": ["{{base_url}}"],
+              "path": ["mp-webhook"],
+              "query": [{ "key": "data.id", "value": "test123" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "mp-webhook — sin headers de firma → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"action\":\"payment.created\",\"data\":{\"id\":\"test456\"}}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mp-webhook",
+              "host": ["{{base_url}}"],
+              "path": ["mp-webhook"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "create-payment-preference — sin JWT → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"booking_id\":\"00000000-0000-0000-0000-000000000000\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/create-payment-preference",
+              "host": ["{{base_url}}"],
+              "path": ["create-payment-preference"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "cancel-booking — sin JWT → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"booking_id\":\"00000000-0000-0000-0000-000000000000\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/cancel-booking",
+              "host": ["{{base_url}}"],
+              "path": ["cancel-booking"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "express-go-online — sin JWT → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"action\":\"online\"}" },
+            "url": {
+              "raw": "{{base_url}}/express-go-online",
+              "host": ["{{base_url}}"],
+              "path": ["express-go-online"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "admin-update-teacher-status — sin JWT → 401",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "apikey", "value": "{{anon_key}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"teacher_id\":\"00000000-0000-0000-0000-000000000000\",\"status\":\"verified\"}"
+            },
+            "url": {
+              "raw": "{{base_url}}/admin-update-teacher-status",
+              "host": ["{{base_url}}"],
+              "path": ["admin-update-teacher-status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Next.js API Routes",
+      "item": [
+        {
+          "name": "create-preference — sin sesión → 401",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"bookingId\":\"00000000-0000-0000-0000-000000000000\"}"
+            },
+            "url": {
+              "raw": "{{app_url}}/api/payments/create-preference",
+              "host": ["{{app_url}}"],
+              "path": ["api", "payments", "create-preference"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "create-plan-preference — sin sesión → 401",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"planSlug\":\"test\"}" },
+            "url": {
+              "raw": "{{app_url}}/api/payments/create-plan-preference",
+              "host": ["{{app_url}}"],
+              "path": ["api", "payments", "create-plan-preference"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 401', function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "webhook — JSON inválido → 400",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "esto no es json" },
+            "url": {
+              "raw": "{{app_url}}/api/payments/webhook",
+              "host": ["{{app_url}}"],
+              "path": ["api", "payments", "webhook"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status is 400', function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

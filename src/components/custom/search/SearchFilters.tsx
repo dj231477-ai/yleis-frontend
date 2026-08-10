@@ -64,7 +64,7 @@ export function SearchFilters() {
 
       {/* Precio */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-xs font-medium text-neutral-500">Precio por hora (ARS)</label>
+        <label className="text-xs font-medium text-neutral-500">Precio por hora (COP)</label>
         <div className="flex items-center gap-2">
           <input
             type="number"

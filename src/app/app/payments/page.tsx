@@ -46,7 +46,6 @@ const TEACHER_BOOKING_SELECT = `
   subjects(name)
 ` as const;
 
-// biome-ignore lint/suspicious/noExplicitAny: Supabase typed client does not include all tables
 function statusBadge(status: string) {
   if (status === "paid") return <Badge variant="brand">Pagada</Badge>;
   if (status === "completed") return <Badge variant="success">Completada</Badge>;

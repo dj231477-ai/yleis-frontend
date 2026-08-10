@@ -9,6 +9,10 @@
     "lint": "biome lint ./src",
     "format": "biome format ./src --write",
     "check": "biome check ./src",
+    "typecheck": "tsc --noEmit",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:api": "newman run tests/postman/yleis-edge-functions.postman_collection.json -e tests/postman/environment.local.json",
     "prepare": "husky"
   },
   "dependencies": {
@@ -43,6 +47,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@next/bundle-analyzer": "^15.5.18",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -51,6 +56,7 @@
     "eslint-config-next": "^15.5.18",
     "husky": "^9.1.7",
     "lint-staged": "^15.3.0",
+    "newman": "^6.2.2",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

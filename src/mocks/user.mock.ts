@@ -31,7 +31,7 @@ export const MOCK_STUDENT: UserProfile = {
   role: "student",
   city: "",
   country: "",
-  timezone: "America/Argentina/Buenos_Aires",
+  timezone: "America/Bogota",
   bio: "Apasionada por los idiomas. Estudiando inglés avanzado.",
   languages: [
     { code: "es", name: "Español", flag: "🇦🇷", level: "Native" },
@@ -48,13 +48,13 @@ export const MOCK_TEACHER: UserProfile = {
   id: "usr_02",
   firstName: "Carlos",
   lastName: "Martínez",
-  email: "carlos.martinez@yleis.com",
+  email: "carlos.martinez@yleis.co",
   phone: "+54 9 11 9876 5432",
   avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=Carlos",
   role: "teacher",
   city: "",
   country: "",
-  timezone: "America/Argentina/Buenos_Aires",
+  timezone: "America/Bogota",
   bio: "Profesor certificado con 8 años de experiencia en inglés de negocios.",
   languages: [
     { code: "es", name: "Español", flag: "🇦🇷", level: "Native" },
@@ -72,7 +72,7 @@ export const MOCK_ADMIN: UserProfile = {
   id: "usr_03",
   firstName: "Laura",
   lastName: "Gómez",
-  email: "laura.gomez@yleis.com",
+  email: "laura.gomez@yleis.co",
   role: "admin",
   avatarUrl: "https://api.dicebear.com/9.x/avataaars/svg?seed=Laura",
 };

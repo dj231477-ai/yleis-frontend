@@ -89,6 +89,7 @@ export default function LoginPage() {
       setEmailSent(true);
       return;
     }
+    fetch("/api/auth/welcome-email", { method: "POST" }).catch(() => {});
     router.push("/app");
     router.refresh();
   }

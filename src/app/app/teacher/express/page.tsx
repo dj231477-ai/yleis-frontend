@@ -71,7 +71,7 @@ export default async function TeacherExpressPage() {
           </div>
         </div>
 
-        <ExpressRequestList initialRequests={requests} teacherId={teacher.id} />
+        <ExpressRequestList initialRequests={requests} />
       </div>
     </div>
   );

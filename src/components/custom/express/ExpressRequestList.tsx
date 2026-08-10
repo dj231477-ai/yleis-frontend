@@ -8,7 +8,6 @@ import { ExpressTimer } from "./ExpressTimer";
 
 type Props = {
   initialRequests: ExpressRequestItem[];
-  teacherId: string;
 };
 
 function formatCOP(n: number) {
@@ -19,7 +18,7 @@ function formatCOP(n: number) {
   }).format(n);
 }
 
-export function ExpressRequestList({ initialRequests, teacherId }: Props) {
+export function ExpressRequestList({ initialRequests }: Props) {
   const router = useRouter();
   const [requests, setRequests] = useState<ExpressRequestItem[]>(initialRequests);
   const [accepting, setAccepting] = useState<string | null>(null);

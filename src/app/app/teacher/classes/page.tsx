@@ -24,7 +24,7 @@ function formatTime(iso: string) {
   );
 }
 
-function formatARS(n: number) {
+function formatCOP(n: number) {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
@@ -126,7 +126,7 @@ export default async function TeacherClassesPage() {
               value={history.filter((b: { status: string }) => b.status === "completed").length}
               color="success"
             />
-            <StatCard label="Ganado" value={formatARS(totalEarned)} color="neutral" />
+            <StatCard label="Ganado" value={formatCOP(totalEarned)} color="neutral" />
           </div>
         )}
 
@@ -198,7 +198,7 @@ function ClassRow({
         </div>
       </div>
       <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
-        <p className="text-sm font-medium text-neutral-700">{formatARS(b.price)}</p>
+        <p className="text-sm font-medium text-neutral-700">{formatCOP(b.price)}</p>
         <div className="flex items-center gap-1.5">
           {statusBadge(b.status)}
           {["confirmed", "paid", "in_progress"].includes(b.status) && (

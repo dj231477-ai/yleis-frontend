@@ -43,7 +43,7 @@ export function mapUserToProfile(row: UserRow, authUser: AuthUser): UserProfile 
     role: row.role as UserProfile["role"],
     city: "",
     country: "",
-    timezone: "America/Argentina/Buenos_Aires",
+    timezone: "America/Bogota",
     bio: undefined,
     languages: [],
     isActive: true,
