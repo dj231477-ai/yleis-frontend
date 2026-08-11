@@ -337,12 +337,26 @@ test.describe("Booking lifecycle — start and finish", () => {
     await expect(teacherPage.getByText("No se pudo cargar el chat")).not.toBeVisible();
     const teacherChatInput = teacherPage.getByPlaceholder("Escribe un mensaje…");
     await expect(teacherChatInput).toBeVisible({ timeout: 10_000 });
+
+    // El estudiante ya tiene el chat abierto ANTES de que el profesor mande el
+    // mensaje — así se verifica que llega en vivo por Realtime, no solo al
+    // recargar (bug real: la tabla messages no estaba en la publicación
+    // supabase_realtime, así que postgres_changes nunca emitía nada).
+    await page.goto(`/app/student/classes/${bookingId}`);
+    await expect(page.getByText("No se pudo cargar el chat")).not.toBeVisible();
+    await expect(page.getByPlaceholder("Escribe un mensaje…")).toBeVisible({ timeout: 10_000 });
+    // El input habilitado solo confirma que conversationId resolvió — el canal
+    // Realtime todavía puede estar terminando el handshake del websocket en ese
+    // instante. Un margen breve evita una carrera artificial que un uso humano
+    // normal nunca produciría (nadie escribe en el mismo milisegundo que el otro
+    // termina de cargar la página).
+    await page.waitForTimeout(1000);
+
     await teacherChatInput.fill("Hola, ¿ya estás listo?");
     await teacherChatInput.press("Enter");
     await expect(teacherPage.getByText("Hola, ¿ya estás listo?")).toBeVisible();
 
-    await page.goto(`/app/student/classes/${bookingId}`);
-    await expect(page.getByText("No se pudo cargar el chat")).not.toBeVisible();
+    // Sin recargar la página del estudiante — debe llegar solo por Realtime
     await expect(page.getByText("Hola, ¿ya estás listo?")).toBeVisible({ timeout: 10_000 });
 
     // 4. El profesor intenta finalizar antes de tiempo — debe ver la advertencia
