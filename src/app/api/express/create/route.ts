@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     description?: string;
     priceMin?: number;
     priceMax?: number;
+    modality?: "presencial" | "virtual";
   } | null;
 
   if (!body?.subjectId || !body?.priceMin || !body?.priceMax) {
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Perfil de estudiante no encontrado" }, { status: 403 });
 
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const modality = body.modality === "presencial" ? "presencial" : "virtual";
 
   // biome-ignore lint/suspicious/noExplicitAny: express_sessions no está en schema tipado
   const { data: session, error: sessionError } = await (supabase as any)
@@ -48,6 +50,7 @@ export async function POST(req: Request) {
       status: "searching",
       duration_min: 60,
       expires_at: expiresAt,
+      modality,
     })
     .select("id")
     .single();

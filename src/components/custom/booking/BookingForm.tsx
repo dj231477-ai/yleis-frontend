@@ -44,6 +44,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
   const [time, setTime] = useState("09:00");
   const [durationMin, setDurationMin] = useState(60);
   const [notes, setNotes] = useState("");
+  const [modality, setModality] = useState<"presencial" | "virtual">("virtual");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noBalance, setNoBalance] = useState(false);
@@ -115,6 +116,7 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
         durationMin,
         notes: notes.trim() || undefined,
         recipient,
+        modality,
       }),
     });
 
@@ -305,6 +307,27 @@ export function BookingForm({ teacherId, teacherName, hourlyRate, subjects }: Pr
               }`}
             >
               {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Modalidad */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-xs font-medium text-neutral-600">Modalidad</label>
+        <div className="flex gap-2">
+          {(["virtual", "presencial"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setModality(m)}
+              className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                modality === m
+                  ? "border-brand-400 bg-brand-50 text-brand-700"
+                  : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+              }`}
+            >
+              {m === "virtual" ? "Virtual" : "Presencial"}
             </button>
           ))}
         </div>

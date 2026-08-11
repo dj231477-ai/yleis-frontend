@@ -88,7 +88,7 @@ export default async function StudentClassDetailPage({
   const { data: booking } = await (supabase as any)
     .from("bookings")
     .select(`
-      id, scheduled_at, duration_min, price, status, meet_link, confirmation_code,
+      id, scheduled_at, duration_min, price, status, meet_link, confirmation_code, modality,
       subjects(name),
       teachers(users(full_name, avatar_url))
     `)
@@ -161,20 +161,33 @@ export default async function StudentClassDetailPage({
           </div>
 
           <div className="mt-3 flex items-center justify-between border-t border-neutral-100 pt-3">
-            <span className="text-sm font-semibold text-neutral-900">
-              {formatCOP(booking.price)}
-            </span>
-            {booking.meet_link && (
-              <a
-                href={booking.meet_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100 transition-colors"
-              >
-                <FeatherVideo className="h-4 w-4" />
-                Unirse a Meet
-              </a>
-            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-neutral-900">
+                {formatCOP(booking.price)}
+              </span>
+              <Badge variant="neutral">
+                {booking.modality === "presencial" ? "Presencial" : "Virtual"}
+              </Badge>
+            </div>
+            {booking.modality === "virtual" &&
+              (booking.status === "in_progress" && booking.meet_link ? (
+                <a
+                  href={booking.meet_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100 transition-colors"
+                >
+                  <FeatherVideo className="h-4 w-4" />
+                  Unirse a Meet
+                </a>
+              ) : (
+                ["confirmed", "paid"].includes(booking.status as string) && (
+                  <span className="flex items-center gap-1.5 rounded-lg bg-neutral-100 px-3 py-1.5 text-xs text-neutral-400">
+                    <FeatherVideo className="h-3.5 w-3.5" />
+                    Meet se habilita al iniciar la clase
+                  </span>
+                )
+              ))}
           </div>
         </div>
 

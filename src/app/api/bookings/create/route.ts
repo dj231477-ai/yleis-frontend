@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     scheduledAt?: string;
     durationMin?: number;
     notes?: string;
+    modality?: "presencial" | "virtual";
     recipient?: {
       type: "self" | "other";
       firstName?: string;
@@ -37,6 +38,7 @@ export async function POST(req: Request) {
   }
 
   const recipient = body.recipient ?? { type: "self" as const };
+  const modality = body.modality === "presencial" ? "presencial" : "virtual";
 
   // biome-ignore lint/suspicious/noExplicitAny: RPC no está en el schema generado
   const { data, error } = await (supabase as any).rpc("create_scheduled_booking", {
@@ -50,6 +52,7 @@ export async function POST(req: Request) {
     p_recipient_last_name: recipient.type === "other" ? recipient.lastName : null,
     p_recipient_relationship: recipient.type === "other" ? recipient.relationship : null,
     p_recipient_age: recipient.type === "other" ? recipient.age : null,
+    p_modality: modality,
   });
 
   if (error) {

@@ -152,6 +152,25 @@ test.describe("Student booking — with package balance", () => {
 
     await expect(page.getByText(/Sofía Pérez/)).toBeVisible();
   });
+
+  test("choosing Presencial modality is saved and shows no Meet section", async ({ page }) => {
+    await page.goto(`/app/student/booking/${TEACHER_ID}`);
+    await expect(page.getByRole("heading", { name: "Reservar clase" })).toBeVisible();
+
+    await page.locator("select").first().selectOption({ label: "Inglés" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await page.locator("select").nth(1).selectOption("12:00");
+    await page.getByRole("button", { name: "1 hora" }).click();
+    await page.getByRole("button", { name: "Presencial" }).click();
+    await page.getByRole("button", { name: "Solicitar clase" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
+    const bookingId = new URL(page.url()).searchParams.get("id");
+    expect(bookingId).toBeTruthy();
+
+    await page.goto(`/app/student/classes/${bookingId}`);
+    await expect(page.getByText("Presencial", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Unirse a Meet|Meet se habilita/)).not.toBeVisible();
+  });
 });
 
 test.describe("Student booking — without package balance", () => {
@@ -292,6 +311,14 @@ test.describe("Booking lifecycle — start and finish", () => {
     expect(acceptRes.ok()).toBeTruthy();
     const { confirmationCode } = (await acceptRes.json()) as { confirmationCode: string };
     expect(confirmationCode).toBeTruthy();
+
+    // 2.5. Antes de iniciar, el link de Meet no debe estar disponible todavía
+    // (el botón "Unirse/Abrir Meet" solo funciona después del código de inicio)
+    const preStartPage = await teacherContext.newPage();
+    await preStartPage.goto(`/app/teacher/classes/${bookingId}`);
+    await expect(preStartPage.getByRole("link", { name: /Abrir Meet/ })).not.toBeVisible();
+    await expect(preStartPage.getByText(/Meet se habilita al iniciar la clase/)).toBeVisible();
+    await preStartPage.close();
 
     // 3. El profesor inicia la clase con el código (la fecha es futura, así que
     // el tiempo contratado todavía no transcurrió)

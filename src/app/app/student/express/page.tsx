@@ -24,6 +24,7 @@ export default function StudentExpressPage() {
   const [description, setDescription] = useState("");
   const [priceMin, setPriceMin] = useState(40000);
   const [priceMax, setPriceMax] = useState(80000);
+  const [modality, setModality] = useState<"presencial" | "virtual">("virtual");
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
 
@@ -92,6 +93,7 @@ export default function StudentExpressPage() {
         description: description.trim() || undefined,
         priceMin,
         priceMax,
+        modality,
       }),
     });
     const json = (await res.json().catch(() => ({}))) as {
@@ -185,6 +187,26 @@ export default function StudentExpressPage() {
                     placeholder="Ej: Ayuda con gramática inglesa nivel B2"
                     className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
                   />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-neutral-600">Modalidad</label>
+                <div className="flex gap-2">
+                  {(["virtual", "presencial"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setModality(m)}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        modality === m
+                          ? "border-brand-400 bg-brand-50 text-brand-700"
+                          : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+                      }`}
+                    >
+                      {m === "virtual" ? "Virtual" : "Presencial"}
+                    </button>
+                  ))}
                 </div>
               </div>
 

@@ -27,7 +27,7 @@ export async function POST(_req: Request, { params }: { params: Params }) {
   const { data: booking } = await (supabase as any)
     .from("bookings")
     .select(
-      "status, confirmation_code, scheduled_at, duration_min, subjects(name), students(users(email)), teachers(users(email, full_name))"
+      "status, confirmation_code, scheduled_at, duration_min, modality, subjects(name), students(users(email)), teachers(users(email, full_name))"
     )
     .eq("id", id)
     .eq("teacher_id", teacher.id)
@@ -48,12 +48,17 @@ export async function POST(_req: Request, { params }: { params: Params }) {
   // Si el profesor conectó Google Calendar, crear el evento + Meet ahora
   // que la clase queda confirmada. Best-effort: si falla, la reserva se
   // confirma igual (el profesor pega el link manual como hasta ahora).
+  // El link de Meet solo aplica a clases virtuales — una clase presencial
+  // no necesita videollamada ni evento con conferenceData.
   let meetLink: string | null = null;
-  const { data: connection } = await supabase
-    .from("teacher_calendar_connections")
-    .select("refresh_token")
-    .eq("teacher_id", teacher.id)
-    .maybeSingle();
+  const { data: connection } =
+    booking.modality === "virtual"
+      ? await supabase
+          .from("teacher_calendar_connections")
+          .select("refresh_token")
+          .eq("teacher_id", teacher.id)
+          .maybeSingle()
+      : { data: null };
 
   if (connection?.refresh_token) {
     try {

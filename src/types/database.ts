@@ -51,6 +51,7 @@ export type Database = {
           id: string;
           meet_link: string | null;
           membership_id: string | null;
+          modality: string;
           notes: string | null;
           price: number;
           recipient_age: number | null;
@@ -77,6 +78,7 @@ export type Database = {
           id?: string;
           meet_link?: string | null;
           membership_id?: string | null;
+          modality?: string;
           notes?: string | null;
           price: number;
           recipient_age?: number | null;
@@ -103,6 +105,7 @@ export type Database = {
           id?: string;
           meet_link?: string | null;
           membership_id?: string | null;
+          modality?: string;
           notes?: string | null;
           price?: number;
           recipient_age?: number | null;
@@ -267,6 +270,7 @@ export type Database = {
           expires_at: string | null;
           id: string;
           meet_link: string | null;
+          modality: string;
           price: number | null;
           price_max: number | null;
           price_min: number | null;
@@ -285,6 +289,7 @@ export type Database = {
           expires_at?: string | null;
           id?: string;
           meet_link?: string | null;
+          modality?: string;
           price?: number | null;
           price_max?: number | null;
           price_min?: number | null;
@@ -303,6 +308,7 @@ export type Database = {
           expires_at?: string | null;
           id?: string;
           meet_link?: string | null;
+          modality?: string;
           price?: number | null;
           price_max?: number | null;
           price_min?: number | null;
@@ -1481,6 +1487,7 @@ export type Database = {
       create_scheduled_booking: {
         Args: {
           p_duration_min: number;
+          p_modality?: string;
           p_notes?: string;
           p_recipient_age?: number;
           p_recipient_first_name?: string;
