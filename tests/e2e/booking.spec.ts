@@ -373,3 +373,122 @@ test.describe("Booking lifecycle — start and finish", () => {
     await teacherContext.close();
   });
 });
+
+// "Portugués" se usa exclusivamente para aislar estos tests: el profesor de
+// prueba se marca temporalmente como el único que dicta ese idioma, para no
+// competir por antigüedad con la cuenta real de producción que ya dicta
+// Inglés/Francés/Alemán (el algoritmo elige al profesor verificado más
+// antiguo — si usáramos Inglés, la solicitud automática caería en la cuenta
+// real y le mandaría una notificación/email falsos).
+async function setTeacherLanguages(languages: string[]) {
+  const tokenRes = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({ email: TEACHER_EMAIL, password: TEACHER_PASSWORD }),
+  });
+  const { access_token } = await tokenRes.json();
+  await fetch(`${SUPABASE_URL}/rest/v1/teachers?id=eq.${TEACHER_ID}`, {
+    method: "PATCH",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ onboarding_step: "verified", hourly_rate: 50000, languages }),
+  });
+}
+
+async function fetchBooking(
+  accessToken: string,
+  bookingId: string
+): Promise<{ status: string; teacher_id: string; auto_assign: boolean }> {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/bookings?id=eq.${bookingId}&select=status,teacher_id,auto_assign`,
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${accessToken}` } }
+  );
+  const [row] = await res.json();
+  return row;
+}
+
+test.describe("Auto-assign teacher", () => {
+  test.use({ storageState: "tests/e2e/.auth/student.json" });
+
+  test.beforeEach(async () => {
+    await setTeacherLanguages(["Portugués"]);
+    const token = await studentAccessToken();
+    await cancelExistingPendingBookings(token);
+    await grantTestPackageHours(token, 5);
+  });
+
+  test.afterEach(async () => {
+    await setTeacherLanguages(["Inglés"]);
+  });
+
+  test("assigns the request to the matching verified teacher and deducts hours", async ({
+    page,
+  }) => {
+    const studentToken = await studentAccessToken();
+    const hoursBefore = await fetchActiveMembershipHours(studentToken);
+
+    await page.goto("/app/student/search");
+    await page.getByRole("button", { name: /No sabes a qué profesor elegir/ }).click();
+    await page
+      .locator("form")
+      .filter({ hasText: "Asignación automática de profesor" })
+      .locator("select")
+      .first()
+      .selectOption({ label: "Portugués" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await page
+      .locator("form")
+      .filter({ hasText: "Asignación automática de profesor" })
+      .locator("select")
+      .nth(1)
+      .selectOption("13:00");
+    await page.getByRole("button", { name: "Solicitar clase automáticamente" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
+    const bookingId = new URL(page.url()).searchParams.get("id");
+    expect(bookingId).toBeTruthy();
+
+    const booking = await fetchBooking(studentToken, bookingId as string);
+    expect(booking.auto_assign).toBe(true);
+    expect(booking.status).toBe("pending_teacher");
+    expect(booking.teacher_id).toBe(TEACHER_ID);
+
+    const hoursAfter = await fetchActiveMembershipHours(studentToken);
+    expect(hoursAfter).toBe(hoursBefore - 1);
+  });
+
+  test("rejecting with no other matching teacher cancels and refunds the hours", async ({
+    page,
+    browser,
+  }) => {
+    const studentToken = await studentAccessToken();
+    const hoursBefore = await fetchActiveMembershipHours(studentToken);
+
+    await page.goto("/app/student/search");
+    await page.getByRole("button", { name: /No sabes a qué profesor elegir/ }).click();
+    const form = page.locator("form").filter({ hasText: "Asignación automática de profesor" });
+    await form.locator("select").first().selectOption({ label: "Portugués" });
+    await page.locator('input[type="date"]').fill(randomFutureDate());
+    await form.locator("select").nth(1).selectOption("14:00");
+    await page.getByRole("button", { name: "Solicitar clase automáticamente" }).click();
+    await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
+    const bookingId = new URL(page.url()).searchParams.get("id") as string;
+
+    const teacherContext = await browser.newContext({
+      storageState: "tests/e2e/.auth/teacher.json",
+    });
+    const rejectRes = await teacherContext.request.post(`/api/bookings/${bookingId}/reject`);
+    expect(rejectRes.ok()).toBeTruthy();
+    const rejectJson = (await rejectRes.json()) as { reassigned?: boolean };
+    expect(rejectJson.reassigned).toBe(false);
+    await teacherContext.close();
+
+    const booking = await fetchBooking(studentToken, bookingId);
+    expect(booking.status).toBe("cancelled_teacher");
+
+    const hoursAfter = await fetchActiveMembershipHours(studentToken);
+    expect(hoursAfter).toBe(hoursBefore);
+  });
+});

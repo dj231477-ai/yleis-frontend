@@ -1,5 +1,6 @@
 "use client";
 
+import { AutoAssignForm } from "@/components/custom/booking/AutoAssignForm";
 import { Avatar } from "@/ui/components/Avatar";
 import { Badge } from "@/ui/components/Badge";
 import { FeatherSearch, FeatherStar } from "@subframe/core";
@@ -64,6 +65,8 @@ export default function SearchPage() {
   return (
     <div className="bg-neutral-50 min-h-full">
       <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+        <AutoAssignForm />
+
         <div>
           <div className="mb-1 flex items-center gap-2">
             <FeatherSearch className="h-5 w-5 text-neutral-500" />

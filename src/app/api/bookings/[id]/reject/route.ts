@@ -24,7 +24,7 @@ export async function POST(_req: Request, { params }: { params: Params }) {
   // biome-ignore lint/suspicious/noExplicitAny: tabla no tipada
   const { data: booking } = await (supabase as any)
     .from("bookings")
-    .select("status")
+    .select("status, auto_assign")
     .eq("id", id)
     .eq("teacher_id", teacher.id)
     .in("status", ["pending_teacher", "pending"])
@@ -32,6 +32,20 @@ export async function POST(_req: Request, { params }: { params: Params }) {
 
   if (!booking) {
     return NextResponse.json({ error: "Reserva no encontrada o ya procesada" }, { status: 404 });
+  }
+
+  if (booking.status === "pending_teacher" && booking.auto_assign) {
+    // Solicitud de asignación automática: en vez de cancelar, reasignar al
+    // siguiente profesor candidato (mismo criterio, excluyendo a los ya
+    // intentados) — solo cancela y devuelve las horas si no queda ninguno.
+    // biome-ignore lint/suspicious/noExplicitAny: RPC no tipado
+    const { data: result, error } = await (supabase as any).rpc("reassign_or_cancel_auto_booking", {
+      p_booking_id: id,
+    });
+    if (error) {
+      return NextResponse.json({ error: "No se pudo rechazar la reserva" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, reassigned: Boolean(result?.reassigned) });
   }
 
   if (booking.status === "pending_teacher") {

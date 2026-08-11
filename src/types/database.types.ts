@@ -43,6 +43,8 @@ export type Database = {
       };
       bookings: {
         Row: {
+          auto_assign: boolean;
+          auto_assign_excluded_teacher_ids: string[];
           cancellation_reason: string | null;
           confirmation_code: string | null;
           created_at: string;
@@ -70,6 +72,8 @@ export type Database = {
           updated_at: string;
         };
         Insert: {
+          auto_assign?: boolean;
+          auto_assign_excluded_teacher_ids?: string[];
           cancellation_reason?: string | null;
           confirmation_code?: string | null;
           created_at?: string;
@@ -97,6 +101,8 @@ export type Database = {
           updated_at?: string;
         };
         Update: {
+          auto_assign?: boolean;
+          auto_assign_excluded_teacher_ids?: string[];
           cancellation_reason?: string | null;
           confirmation_code?: string | null;
           created_at?: string;
@@ -1470,6 +1476,21 @@ export type Database = {
         };
         Returns: string;
       };
+      create_auto_assigned_booking: {
+        Args: {
+          p_duration_min: number;
+          p_modality?: string;
+          p_notes?: string;
+          p_recipient_age?: number;
+          p_recipient_first_name?: string;
+          p_recipient_last_name?: string;
+          p_recipient_relationship?: string;
+          p_recipient_type?: string;
+          p_scheduled_at: string;
+          p_subject_id: string;
+        };
+        Returns: string;
+      };
       create_membership_activation_grant: {
         Args: { p_mp_payment_id: string; p_plan_slug: string };
         Returns: string;
@@ -1540,6 +1561,10 @@ export type Database = {
           p_teacher_id: string;
         };
         Returns: string;
+      };
+      reassign_or_cancel_auto_booking: {
+        Args: { p_booking_id: string };
+        Returns: Json;
       };
       refund_membership_hours: {
         Args: { p_hours: number; p_membership_id: string };

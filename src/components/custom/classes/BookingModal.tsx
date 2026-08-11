@@ -40,12 +40,16 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("09:00");
   const [teacherId, setTeacherId] = useState(teachers[0]?.id ?? "");
+  const [assignMode, setAssignMode] = useState<"manual" | "auto">("auto");
+  const [modality, setModality] = useState<"presencial" | "virtual">("virtual");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const selectedTeacher = teachers.find((t) => t.id === teacherId);
   const estimatedPrice =
-    selectedTeacher?.hourly_rate != null ? selectedTeacher.hourly_rate * 1 : null;
+    assignMode === "manual" && selectedTeacher?.hourly_rate != null
+      ? selectedTeacher.hourly_rate * 1
+      : null;
 
   async function handleSubmit() {
     setError(null);
@@ -53,7 +57,7 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
       setError("Selecciona una fecha");
       return;
     }
-    if (!teacherId) {
+    if (assignMode === "manual" && !teacherId) {
       setError("Selecciona un profesor");
       return;
     }
@@ -61,17 +65,21 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
     const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
     setLoading(true);
-    const res = await fetch("/api/bookings/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        teacherId,
-        subjectId,
-        scheduledAt,
-        durationMin: 60,
-        notes: notes.trim() || undefined,
-      }),
-    });
+    const res = await fetch(
+      assignMode === "auto" ? "/api/bookings/auto-assign" : "/api/bookings/create",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(assignMode === "manual" ? { teacherId } : {}),
+          subjectId,
+          scheduledAt,
+          durationMin: 60,
+          notes: notes.trim() || undefined,
+          modality,
+        }),
+      }
+    );
 
     const json = (await res.json().catch(() => ({}))) as { bookingId?: string; error?: string };
     if (!res.ok || !json.bookingId) {
@@ -125,6 +133,40 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-neutral-600">
+                  ¿Cómo eliges profesor?
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAssignMode("auto")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                      assignMode === "auto"
+                        ? "border-brand-400 bg-brand-50 text-brand-700"
+                        : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+                    }`}
+                  >
+                    Que Yleis elija
+                    <span className="block text-xs font-normal text-neutral-400">Recomendado</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAssignMode("manual")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-left text-sm font-medium transition-colors ${
+                      assignMode === "manual"
+                        ? "border-brand-400 bg-brand-50 text-brand-700"
+                        : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+                    }`}
+                  >
+                    Elegir yo
+                    <span className="block text-xs font-normal text-neutral-400">
+                      Un profesor específico
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-neutral-600">Materia</label>
                 <select
                   value={subjectId}
@@ -156,6 +198,26 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
                   placeholder="¿Qué quieres trabajar en la clase?"
                   className="resize-none rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
                 />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-medium text-neutral-600">Modalidad</label>
+                <div className="flex gap-2">
+                  {(["virtual", "presencial"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setModality(m)}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        modality === m
+                          ? "border-brand-400 bg-brand-50 text-brand-700"
+                          : "border-neutral-200 bg-white text-neutral-600 hover:border-neutral-300"
+                      }`}
+                    >
+                      {m === "virtual" ? "Virtual" : "Presencial"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           )}
@@ -197,30 +259,43 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
             </div>
           )}
 
-          {/* Paso 3 — Profesor */}
+          {/* Paso 3 — Profesor (o resumen si es asignación automática) */}
           {step === 3 && (
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-neutral-600">Profesor</label>
-                {teachers.length === 0 ? (
-                  <p className="rounded-lg border border-dashed border-neutral-300 p-4 text-center text-sm text-neutral-400">
-                    No hay profesores verificados disponibles para esta materia.
+              {assignMode === "auto" ? (
+                <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
+                  <p className="text-sm font-medium text-brand-800">
+                    Yleis te asigna un profesor automáticamente
                   </p>
-                ) : (
-                  <select
-                    value={teacherId}
-                    onChange={(e) => setTeacherId(e.target.value)}
-                    className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                  >
-                    {teachers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.full_name}
-                        {t.hourly_rate != null ? ` — ${formatCOP(t.hourly_rate)}/h` : ""}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
+                  <p className="mt-1 text-xs text-neutral-600">
+                    Le enviamos la solicitud al profesor verificado disponible con más antigüedad en
+                    la plataforma para esa materia y horario. Si no puede, se la pasamos al
+                    siguiente — no tienes que hacer nada más.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-medium text-neutral-600">Profesor</label>
+                  {teachers.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-neutral-300 p-4 text-center text-sm text-neutral-400">
+                      No hay profesores verificados disponibles para esta materia.
+                    </p>
+                  ) : (
+                    <select
+                      value={teacherId}
+                      onChange={(e) => setTeacherId(e.target.value)}
+                      className="rounded-lg border border-neutral-200 bg-white px-3 py-2.5 text-sm text-neutral-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                    >
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.full_name}
+                          {t.hourly_rate != null ? ` — ${formatCOP(t.hourly_rate)}/h` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
               {estimatedPrice != null && (
                 <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
@@ -231,7 +306,7 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-neutral-500">
-                    Se descontará 1 clase de tu plan. El profesor debe aceptar la solicitud.
+                    Se descuenta 1 hora de tu paquete. El profesor debe aceptar la solicitud.
                   </p>
                 </div>
               )}
@@ -281,7 +356,7 @@ export function BookingModal({ subjects, teachers, onClose, onSuccess }: Props) 
               icon={loading ? undefined : <FeatherCheck />}
               loading={loading}
               onClick={handleSubmit}
-              disabled={teachers.length === 0}
+              disabled={assignMode === "manual" && teachers.length === 0}
             >
               Confirmar reserva
             </Button>
