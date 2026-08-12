@@ -1,3 +1,4 @@
+import { BuyHoursForm } from "@/components/custom/plans/BuyHoursForm";
 import { PlanCard } from "@/components/custom/plans/PlanCard";
 import { createClient } from "@/lib/supabase/server";
 import type { Plan } from "@/services/plans";
@@ -146,6 +147,9 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
           );
         })}
       </div>
+
+      {/* Compra de horas sueltas (cantidad libre) */}
+      <BuyHoursForm plans={plans} />
 
       {/* Nota al pie */}
       <p className="text-caption font-caption text-neutral-400">

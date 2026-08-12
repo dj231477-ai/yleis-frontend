@@ -129,7 +129,7 @@ test.describe("Student booking — with package balance", () => {
     await page.getByRole("button", { name: "Solicitar clase" }).click();
     await page.waitForURL(/\/app\/student\/booking\/confirmation\?id=/, { timeout: 15_000 });
 
-    await expect(page.getByText(/solicitud fue enviada|reserva confirmada/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "¡Solicitud enviada!" })).toBeVisible();
   });
 
   test("booking for someone else saves the recipient's data", async ({ page }) => {

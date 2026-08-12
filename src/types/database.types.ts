@@ -267,6 +267,67 @@ export type Database = {
           },
         ];
       };
+      custom_hours_grants: {
+        Row: {
+          category: string;
+          created_at: string;
+          expires_at: string;
+          hours: number;
+          id: string;
+          mp_payment_id: string;
+          price_cop: number;
+          student_user_id: string;
+          token: string;
+          used: boolean;
+        };
+        Insert: {
+          category: string;
+          created_at?: string;
+          expires_at?: string;
+          hours: number;
+          id?: string;
+          mp_payment_id: string;
+          price_cop: number;
+          student_user_id: string;
+          token?: string;
+          used?: boolean;
+        };
+        Update: {
+          category?: string;
+          created_at?: string;
+          expires_at?: string;
+          hours?: number;
+          id?: string;
+          mp_payment_id?: string;
+          price_cop?: number;
+          student_user_id?: string;
+          token?: string;
+          used?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "custom_hours_grants_student_user_id_fkey";
+            columns: ["student_user_id"];
+            isOneToOne: false;
+            referencedRelation: "teacher_public_catalog";
+            referencedColumns: ["user_id"];
+          },
+          {
+            foreignKeyName: "custom_hours_grants_student_user_id_fkey";
+            columns: ["student_user_id"];
+            isOneToOne: false;
+            referencedRelation: "teacher_public_profile";
+            referencedColumns: ["user_id"];
+          },
+          {
+            foreignKeyName: "custom_hours_grants_student_user_id_fkey";
+            columns: ["student_user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       express_sessions: {
         Row: {
           created_at: string;
@@ -1468,6 +1529,15 @@ export type Database = {
         Args: { p_session_id: string; p_teacher_user_id: string };
         Returns: Json;
       };
+      activate_custom_hours: {
+        Args: {
+          p_category: string;
+          p_grant_token: string;
+          p_hours: number;
+          p_mp_payment_id: string;
+        };
+        Returns: string;
+      };
       activate_membership: {
         Args: {
           p_grant_token: string;
@@ -1475,6 +1545,10 @@ export type Database = {
           p_plan_slug: string;
         };
         Returns: string;
+      };
+      calculate_custom_hours_price: {
+        Args: { p_category: string; p_hours: number };
+        Returns: number;
       };
       create_auto_assigned_booking: {
         Args: {
@@ -1490,6 +1564,13 @@ export type Database = {
           p_subject_id: string;
         };
         Returns: string;
+      };
+      create_custom_hours_grant: {
+        Args: { p_category: string; p_hours: number; p_mp_payment_id: string };
+        Returns: {
+          price_cop: number;
+          token: string;
+        }[];
       };
       create_membership_activation_grant: {
         Args: { p_mp_payment_id: string; p_plan_slug: string };

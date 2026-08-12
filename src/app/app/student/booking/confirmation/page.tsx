@@ -85,7 +85,7 @@ export default async function ConfirmationPage({ searchParams }: { searchParams:
             <FeatherCheckCircle className="mb-4 h-16 w-16 text-success" />
           )}
           <h1 className="text-2xl font-bold text-neutral-900">
-            {isPending ? "Pago en proceso" : "¡Reserva confirmada!"}
+            {isPending ? "Pago en proceso" : "¡Solicitud enviada!"}
           </h1>
           <p className="mt-2 text-sm text-neutral-500">
             {isPending
