@@ -54,7 +54,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Search
   ]);
 
   const currentSlug = activePlan?.plan_slug ?? "free";
-  const grouped = groupPlans(plans);
+  const grouped = groupPlans(plans.filter((p) => p.slug !== "free"));
 
   // Para encontrar cuál grupo contiene el plan activo
   function isCurrentGroup(plan: Plan, partner?: Plan): boolean {
