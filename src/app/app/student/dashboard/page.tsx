@@ -11,6 +11,7 @@ import {
   FeatherCreditCard,
   FeatherPackage,
   FeatherSearch,
+  FeatherShuffle,
   FeatherUser,
   FeatherVideo,
   FeatherZap,
@@ -162,6 +163,12 @@ const QUICK_ACTIONS = [
     label: "Clase Express",
     icon: <FeatherZap />,
     href: "/app/student/express",
+    variant: "brand" as const,
+  },
+  {
+    label: "Asignación automática",
+    icon: <FeatherShuffle />,
+    href: "/app/student/search?auto=1",
     variant: "brand" as const,
   },
   {

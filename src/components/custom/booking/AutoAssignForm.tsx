@@ -3,7 +3,7 @@
 import { RECIPIENT_RELATIONSHIPS, type RecipientRelationship } from "@/services/bookings";
 import { Button } from "@/ui/components/Button";
 import { FeatherZap } from "@subframe/core";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Subject = { id: string; name: string; category: string | null };
@@ -25,7 +25,8 @@ function todayMin() {
 
 export function AutoAssignForm() {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const [open, setOpen] = useState(() => searchParams.get("auto") === "1");
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectId, setSubjectId] = useState("");
   const [date, setDate] = useState("");
